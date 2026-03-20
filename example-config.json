@@ -1,0 +1,33 @@
+{
+    "harbor_base_url": "https://harbor.example.com",
+    "harbor_project": "ap-python",
+    "harbor_username": "your-username",
+    "harbor_token": "your-harbor-token",
+    "podman_bin": "podman",
+    "xpra_mode": "auto",
+    "xpra_display": ":100",
+    "host_env_allowlist": [
+        "DISPLAY",
+        "WAYLAND_DISPLAY",
+        "XDG_RUNTIME_DIR",
+        "PULSE_SERVER",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY"
+    ],
+    "bind_mounts": [
+        "/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    ],
+    "registry_prefix_allowlist": [
+        "registry.example.com/ap-python/"
+    ],
+    "fallback_command": [
+        "python",
+        "-m",
+        "app"
+    ],
+    "tag_allow_regex": [
+        ".*(?:prod).*"
+    ],
+    "page_size": 50
+}
