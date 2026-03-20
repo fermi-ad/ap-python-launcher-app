@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ap-python-launcher"
+version = "0.1.0"
+description = "Tkinter-based launcher for discovering and running Harbor-hosted Python app containers with Podman"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Fermi National Accelerator Laboratory" }
+]
+dependencies = []
+
+[project.scripts]
+ap-launcher = "ap_launcher.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ap_launcher*"]
