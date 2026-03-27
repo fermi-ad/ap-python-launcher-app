@@ -1,0 +1,75 @@
+body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background: #0b1220;
+    color: #e6edf3;
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.header h1 {
+    margin: 0 0 8px 0;
+}
+
+.sub {
+    margin: 0;
+    opacity: 0.8;
+}
+
+.panel {
+    background: #111a2e;
+    border: 1px solid #23324f;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+button {
+    background: #2563eb;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: white;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status {
+    opacity: 0.85;
+}
+
+.apps {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.apps th,
+.apps td {
+    padding: 10px;
+    border-bottom: 1px solid #23324f;
+}
+
+.apps th {
+    text-align: left;
+    font-weight: 600;
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: pre-wrap;
+}
