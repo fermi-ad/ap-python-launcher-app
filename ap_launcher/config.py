@@ -19,6 +19,11 @@ class WebConfig:
 
     workload_namespace: str
 
+    # Per-launch access Service settings
+    app_target_port: int
+    lb_port: int
+    lb_annotations_json: str | None
+
 
 def load_web_config() -> WebConfig:
     """Load configuration from environment variables.
@@ -36,4 +41,7 @@ def load_web_config() -> WebConfig:
         harbor_password=os.environ.get("AP_HARBOR_PASSWORD"),
         kubeconfig=os.environ.get("AP_KUBECONFIG"),
         workload_namespace=os.environ.get("AP_WORKLOAD_NAMESPACE", "ap-python"),
+        app_target_port=int(os.environ.get("AP_APP_TARGET_PORT", "14500")),
+        lb_port=int(os.environ.get("AP_LB_PORT", "80")),
+        lb_annotations_json=os.environ.get("AP_LB_ANNOTATIONS_JSON"),
     )

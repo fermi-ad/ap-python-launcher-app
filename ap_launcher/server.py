@@ -101,23 +101,37 @@ def create_app() -> FastAPI:
         image = f"{registry_host}/{repo}:{tag}"
 
         kl = KubeLauncher(
-            namespace=cfg.workload_namespace, kubeconfig_content=cfg.kubeconfig
+            namespace=cfg.workload_namespace,
+            kubeconfig_content=cfg.kubeconfig,
+            app_target_port=cfg.app_target_port,
+            lb_port=cfg.lb_port,
+            lb_annotations_json=cfg.lb_annotations_json,
         )
         try:
             res = kl.create_job(image=image, repo=repo, tag=tag)
         except LaunchLimitExceededError as e:
             raise HTTPException(status_code=429, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
+        # LoadBalancer ingress will usually be assigned asynchronously; user can poll
+        # GET /launch/{launchId} for access URLs.
         return {
             "launchId": res.launch_id,
             "jobName": res.job_name,
+            "serviceName": res.service_name,
             "namespace": res.namespace,
+            "access": {"status": "Pending", "urls": []},
         }
 
     @app.get("/launch/{launch_id}")
     def launch_status(launch_id: str) -> dict:
         kl = KubeLauncher(
-            namespace=cfg.workload_namespace, kubeconfig_content=cfg.kubeconfig
+            namespace=cfg.workload_namespace,
+            kubeconfig_content=cfg.kubeconfig,
+            app_target_port=cfg.app_target_port,
+            lb_port=cfg.lb_port,
+            lb_annotations_json=cfg.lb_annotations_json,
         )
         return kl.get_launch_status(launch_id=launch_id)
 

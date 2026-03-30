@@ -2,6 +2,16 @@
 
 In-cluster web UI + API for listing Harbor-hosted AP Python app images and launching them as Kubernetes Jobs.
 
+## Accessing a launched app
+
+Each launch creates:
+- a `Job` (and Pod) in the workload namespace, and
+- a per-launch `Service` of type `LoadBalancer` that selects the Pod by `ap-python.fnal.gov/launch-id`.
+
+The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](ap_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
+
+The launcher will delete the per-launch Service when the Job finishes (Succeeded/Failed) or when the Pod disappears.
+
 ## Run locally
 
 ```bash

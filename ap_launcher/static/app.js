@@ -36,12 +36,38 @@ function renderApps(apps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
         document.getElementById("launch").textContent = JSON.stringify(
           launchResp,
           null,
           2
         );
-        setStatus("Launch requested");
+        setStatus("Launch requested; waiting for LoadBalancer...");
+
+        const launchId = launchResp.launchId;
+        if (launchId) {
+          // Poll until the LB ingress is assigned (or job finishes).
+          for (let i = 0; i < 60; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            const st = await fetchJSON(`/launch/${launchId}`);
+            document.getElementById("launch").textContent = JSON.stringify(
+              st,
+              null,
+              2
+            );
+
+            const urls = st?.access?.urls ?? [];
+            if (urls.length > 0) {
+              setStatus("App is reachable");
+              break;
+            }
+            if (st?.status === "Succeeded" || st?.status === "Failed") {
+              setStatus(`Job ${st.status}; access cleaned up`);
+              break;
+            }
+            setStatus("Waiting for LoadBalancer...");
+          }
+        }
       } catch (e) {
         document.getElementById("launch").textContent = String(e);
         setStatus("Launch failed");
