@@ -8,6 +8,14 @@ import uuid
 from kubernetes import client, config
 
 
+MAX_JOBS_TOTAL = 15
+MAX_JOBS_PER_APP = 5
+
+
+class LaunchLimitExceededError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class LaunchResult:
     launch_id: str
@@ -39,9 +47,41 @@ class KubeLauncher:
         self.batch = client.BatchV1Api()
         self.core = client.CoreV1Api()
 
+    def _count_active_jobs(self, *, repo: str | None = None) -> int:
+        selector = "app.kubernetes.io/managed-by=ap-python-launcher"
+        if repo is not None:
+            selector += f",ap-python.fnal.gov/repo={repo.replace('/', '_')}"
+
+        jobs = self.batch.list_namespaced_job(
+            namespace=self.namespace, label_selector=selector
+        )
+
+        active = 0
+        for j in jobs.items:
+            s = j.status
+            if s is not None and s.active and s.active > 0:
+                active += 1
+        return active
+
+    def _enforce_limits(self, *, repo: str) -> None:
+        total_active = self._count_active_jobs(repo=None)
+        if total_active >= MAX_JOBS_TOTAL:
+            raise LaunchLimitExceededError(
+                f"Total active job limit reached ({total_active}/{MAX_JOBS_TOTAL})"
+            )
+
+        per_app_active = self._count_active_jobs(repo=repo)
+        if per_app_active >= MAX_JOBS_PER_APP:
+            raise LaunchLimitExceededError(
+                f"Active job limit reached for app '{repo}' ({per_app_active}/{MAX_JOBS_PER_APP})"
+            )
+
     def create_job(
         self, *, image: str, repo: str, tag: str, requested_by: str | None = None
     ) -> LaunchResult:
+        # Enforce concurrency limits based on currently active Jobs.
+        self._enforce_limits(repo=repo)
+
         launch_id = str(uuid.uuid4())
         ts = _now_utc().strftime("%Y%m%d%H%M%S")
         safe_repo = repo.split("/")[-1].replace("_", "-").replace(".", "-")

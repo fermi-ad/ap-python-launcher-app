@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import load_web_config
 from .harbor import HarborClient
-from .kube import KubeLauncher
+from .kube import KubeLauncher, LaunchLimitExceededError
 
 
 def create_app() -> FastAPI:
@@ -103,7 +103,11 @@ def create_app() -> FastAPI:
         kl = KubeLauncher(
             namespace=cfg.workload_namespace, kubeconfig_content=cfg.kubeconfig
         )
-        res = kl.create_job(image=image, repo=repo, tag=tag)
+        try:
+            res = kl.create_job(image=image, repo=repo, tag=tag)
+        except LaunchLimitExceededError as e:
+            raise HTTPException(status_code=429, detail=str(e)) from e
+
         return {
             "launchId": res.launch_id,
             "jobName": res.job_name,
