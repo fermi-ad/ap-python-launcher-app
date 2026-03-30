@@ -7,8 +7,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import load_web_config
-from .harbor import HarborClient
-from .kube import KubeLauncher, LaunchLimitExceededError
+from .discovery import HarborClient
+from .launch import KubeLauncher, LaunchLimitExceededError
 
 
 def create_app() -> FastAPI:
@@ -44,45 +44,11 @@ def create_app() -> FastAPI:
             cfg.harbor_password,
         )
 
-        # Debug payload to understand what Harbor is returning in-cluster.
-        # This is safe: it contains only repository names and tag names.
-        debug: dict = {
-            "baseUrl": cfg.harbor_base_url,
-            "project": cfg.harbor_project,
-            "repos": [],
-            "errors": [],
-        }
-
-        try:
-            repos = hc.list_repositories()
-            debug["repos"] = repos
-        except Exception as e:  # noqa: BLE001
-            debug["errors"].append(f"list_repositories: {type(e).__name__}: {e}")
-            repos = []
-
-        apps = []
-        for repo in repos:
-            try:
-                artifacts = hc.list_artifacts(repo, with_tag=True)
-                tags: list[str] = []
-                for art in artifacts:
-                    ts = art.get("tags")
-                    if not isinstance(ts, list):
-                        continue
-                    for t in ts:
-                        if isinstance(t, dict) and isinstance(t.get("name"), str):
-                            tags.append(t["name"])
-                debug.setdefault("repoTags", {})[repo] = sorted(set(tags))
-            except Exception as e:  # noqa: BLE001
-                debug["errors"].append(f"{repo}: {type(e).__name__}: {e}")
-
-        # Keep existing behavior for the UI list for now.
         apps = hc.list_latest_apps()
         return {
             "source": "harbor",
             "project": cfg.harbor_project,
             "apps": [{"repo": a.repo, "tag": a.tag} for a in apps],
-            "debug": debug,
         }
 
     @app.post("/launch")
