@@ -3,7 +3,6 @@
     "harbor_project": "ap-python",
     "harbor_username": "your-username",
     "harbor_token": "your-harbor-token",
-    "podman_bin": "podman",
     "xpra_mode": "auto",
     "xpra_display": ":100",
     "host_env_allowlist": [

@@ -5,17 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ap-python-launcher"
 version = "0.1.0"
-description = "Tkinter-based launcher for discovering and running Harbor-hosted Python app containers with Podman"
+description = "In-cluster web launcher for discovering and launching Harbor-hosted AP Python apps via Kubernetes Jobs"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
   { name = "Fermi National Accelerator Laboratory" }
 ]
-dependencies = []
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "kubernetes>=29.0.0",
+  "requests>=2.31",
+]
 
 [project.scripts]
-ap-launcher = "ap_launcher.main:main"
+ap-python-launcher = "ap_python_launcher.server:app"
 
 [tool.setuptools]
 include-package-data = true
