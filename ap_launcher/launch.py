@@ -158,6 +158,10 @@ class KubeLauncher:
                                         container_port=self.app_target_port
                                     )
                                 ],
+                                resources=client.V1ResourceRequirements(
+                                    requests={"cpu": "50m", "memory": "256Mi"},
+                                    limits={"cpu": "200m", "memory": "512Mi"},
+                                ),
                             )
                         ],
                     ),
