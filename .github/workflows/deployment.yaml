@@ -1,21 +1,8 @@
-name: Continuous Delivery Workflow for Python applications
-
+name: Continuous Delivery Workflow for Python app launcher
 on:
-  workflow_dispatch:
-    inputs:
-      pull-git-submodules:
-        description: 'Indicates whether this repository has Git submodules to pull.'
-        required: false
-        type: boolean
-        default: false
-
-  workflow_call:
-    inputs:
-      pull-git-submodules:
-        required: false
-        type: boolean
-        default: false
-        description: 'Indicates whether this repository has Git submodules to pull.'
+  push:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -25,26 +12,10 @@ jobs:
 
   Build-Dockerize-Push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checking out source code
         uses: actions/checkout@v6
-        with:
-          submodules: ${{ (inputs.pull-git-submodules || github.event.inputs.pull-git-submodules == 'true') && 'recursive' || 'false' }}
-
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
-          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Docker meta
         id: meta
