@@ -15,11 +15,37 @@ The launcher will delete the per-launch Service when the Job finishes (Succeeded
 ## Run locally
 
 ```bash
-python -m pip install -e .
-uvicorn ap_python_launcher.server:app --reload --port 8080
+uv sync
+uv run uvicorn ap_launcher.server:app --reload --port 8080
 ```
 
 Then open: `http://localhost:8080/`
+
+## Docker
+
+**Build:**
+
+```bash
+docker build -t ap-python-launcher .
+```
+
+**Run:**
+
+```bash
+docker run --rm -p 8080:8000 ap-python-launcher
+```
+
+Then open: `http://localhost:8080/`
+
+Pass environment variables with `-e`:
+
+```bash
+docker run --rm -p 8080:8000 \
+  -e AP_HARBOR_USERNAME=myuser \
+  -e AP_HARBOR_PASSWORD=mypassword \
+  -e AP_KUBECONFIG="$(cat ~/.kube/config)" \
+  ap-python-launcher
+```
 
 ## Configuration
 
