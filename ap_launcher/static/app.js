@@ -31,7 +31,7 @@ function renderApps(apps) {
       setStatus(`Launching ${app.repo}:${app.tag ?? "latest"}...`);
       try {
         const payload = { repo: app.repo, tag: app.tag ?? "latest" };
-        const launchResp = await fetchJSON("/launch", {
+        const launchResp = await fetchJSON("launch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -49,7 +49,7 @@ function renderApps(apps) {
           // Poll until the LB ingress is assigned (or job finishes).
           for (let i = 0; i < 60; i++) {
             await new Promise((r) => setTimeout(r, 2000));
-            const st = await fetchJSON(`/launch/${launchId}`);
+            const st = await fetchJSON(`launch/${launchId}`);
             document.getElementById("launch").textContent = JSON.stringify(
               st,
               null,
@@ -87,7 +87,7 @@ function renderApps(apps) {
 async function refresh() {
   setStatus("Refreshing... ");
   try {
-    const data = await fetchJSON("/apps");
+    const data = await fetchJSON("apps");
     renderApps(data.apps ?? []);
     setStatus(`Loaded ${data.apps?.length ?? 0} app(s)`);
   } catch (e) {

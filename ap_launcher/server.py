@@ -3,18 +3,31 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import load_web_config
 from .discovery import HarborClient
 from .launch import KubeLauncher, LaunchLimitExceededError
+
+_URL_PREFIX = "/ap-python"
+
+
+class StripPrefixMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.scope["path"]
+        if path.startswith(_URL_PREFIX):
+            request.scope["path"] = path[len(_URL_PREFIX):] or "/"
+        return await call_next(request)
 
 
 def create_app() -> FastAPI:
     cfg = load_web_config()
 
     app = FastAPI(title="ap-python-launcher", version="0.1.0")
+    app.add_middleware(StripPrefixMiddleware)
 
     static_dir = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
