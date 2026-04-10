@@ -37,6 +37,15 @@ function findActionButton(repo, tag) {
   return null;
 }
 
+function setRowStatus(repo, tag, text) {
+  for (const td of document.querySelectorAll("td.row-status[data-repo]")) {
+    if (td.dataset.repo === repo && td.dataset.tag === tag) {
+      td.textContent = text;
+      return;
+    }
+  }
+}
+
 function makeOpenLink(url, className) {
   const a = document.createElement("a");
   a.textContent = "Open";
@@ -97,6 +106,7 @@ function makeEndButton(launchId, repo, tag, className) {
       await fetchJSON(`launch/${launchId}`, { method: "DELETE" });
       removeJob(launchId);
       setStatus("Job ended");
+      setRowStatus(repo, tag, "—");
     } catch (e) {
       setStatus(`Failed to end job: ${e}`);
       btn.disabled = false;
@@ -112,6 +122,7 @@ async function pollLaunch(launchId, repo, tag) {
   if (actionBtn && actionBtn.dataset.launchId !== launchId) {
     actionBtn.replaceWith(makeEndButton(launchId, repo, tag, actionBtn.className));
   }
+  setRowStatus(repo, tag, "Pending");
 
   for (let i = 0; i < 60; i++) {
     await new Promise((r) => setTimeout(r, 2000));
@@ -125,11 +136,13 @@ async function pollLaunch(launchId, repo, tag) {
     } catch {
       removeJob(launchId);
       setStatus("Job no longer found; cleared from saved jobs");
+      setRowStatus(repo, tag, "—");
       const endBtn = findActionButton(repo, tag);
       if (endBtn) endBtn.replaceWith(makeLaunchButton(repo, tag, endBtn.className));
       return;
     }
     document.getElementById("launch").textContent = JSON.stringify(st, null, 2);
+    setRowStatus(repo, tag, st?.status ?? "—");
 
     const urls = st?.access?.urls ?? [];
     if (urls.length > 0) {
@@ -137,6 +150,7 @@ async function pollLaunch(launchId, repo, tag) {
       statusEl.innerHTML = "App is reachable: " + urls
         .map(u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
         .join(", ");
+      setRowStatus(repo, tag, "Ready");
       const endBtn = findActionButton(repo, tag);
       if (endBtn) endBtn.replaceWith(makeOpenLink(urls[0], endBtn.className));
       return;
@@ -144,6 +158,7 @@ async function pollLaunch(launchId, repo, tag) {
     if (st?.status === "Succeeded" || st?.status === "Failed") {
       setStatus(`Job ${st.status}; access cleaned up`);
       removeJob(launchId);
+      setRowStatus(repo, tag, "—");
       const endBtn = findActionButton(repo, tag);
       if (endBtn) endBtn.replaceWith(makeLaunchButton(repo, tag, endBtn.className));
       return;
@@ -165,11 +180,18 @@ function renderApps(apps) {
     const tag = document.createElement("td");
     tag.textContent = app.tag ?? "latest";
 
+    const status = document.createElement("td");
+    status.className = "row-status";
+    status.dataset.repo = app.repo;
+    status.dataset.tag = app.tag ?? "latest";
+    status.textContent = "—";
+
     const action = document.createElement("td");
     action.appendChild(makeLaunchButton(app.repo, app.tag ?? "latest"));
 
     tr.appendChild(repo);
     tr.appendChild(tag);
+    tr.appendChild(status);
     tr.appendChild(action);
 
     tbody.appendChild(tr);
@@ -189,12 +211,14 @@ async function restoreJobs() {
 
     const urls = st?.access?.urls ?? [];
     if (urls.length > 0) {
+      setRowStatus(job.repo, job.tag, "Ready");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) btn.replaceWith(makeOpenLink(urls[0], btn.className));
     } else if (st?.status === "Succeeded" || st?.status === "Failed") {
       removeJob(job.launchId);
     } else {
       // Still running — show End button and resume polling in the background
+      setRowStatus(job.repo, job.tag, st?.status ?? "Running");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) btn.replaceWith(makeEndButton(job.launchId, job.repo, job.tag, btn.className));
       pollLaunch(job.launchId, job.repo, job.tag);
