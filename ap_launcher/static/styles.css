@@ -42,6 +42,8 @@ button {
     padding: 10px 12px;
     color: white;
     cursor: pointer;
+    font-size: inherit;
+    line-height: 1.25;
 }
 
 button:disabled {
@@ -65,6 +67,8 @@ a.open-btn {
     color: white;
     text-decoration: none;
     font-size: inherit;
+    line-height: 1.25;
+    margin-right: 16px;
 }
 
 a.open-btn:hover {
@@ -75,9 +79,29 @@ a.open-btn:hover {
     opacity: 0.85;
 }
 
+.status a {
+    color: #60a5fa;
+}
+
 .apps {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.apps th:nth-child(1),
+.apps td:nth-child(1) {
+    width: 50%;
+}
+
+.apps th:nth-child(2),
+.apps td:nth-child(2) {
+    width: 20%;
+}
+
+.apps th:nth-child(3),
+.apps td:nth-child(3) {
+    width: 30%;
 }
 
 .apps th,
