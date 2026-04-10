@@ -1,3 +1,22 @@
+const JOBS_KEY = "ap_launcher_jobs";
+
+function loadJobs() {
+  try { return JSON.parse(localStorage.getItem(JOBS_KEY) ?? "[]"); }
+  catch { return []; }
+}
+
+function saveJob(launchId, repo, tag) {
+  // Replace any existing entry for the same repo+tag
+  const jobs = loadJobs().filter(j => !(j.repo === repo && j.tag === tag));
+  jobs.push({ launchId, repo, tag });
+  localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
+}
+
+function removeJob(launchId) {
+  const jobs = loadJobs().filter(j => j.launchId !== launchId);
+  localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
+}
+
 async function fetchJSON(url, opts) {
   const res = await fetch(url, opts);
   if (!res.ok) {
@@ -9,6 +28,55 @@ async function fetchJSON(url, opts) {
 
 function setStatus(text) {
   document.getElementById("status").textContent = text;
+}
+
+function findActionButton(repo, tag) {
+  for (const btn of document.querySelectorAll("button[data-repo]")) {
+    if (btn.dataset.repo === repo && btn.dataset.tag === tag) return btn;
+  }
+  return null;
+}
+
+function makeOpenLink(url, className) {
+  const a = document.createElement("a");
+  a.textContent = "Open";
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  if (className) a.className = className;
+  return a;
+}
+
+async function pollLaunch(launchId, repo, tag) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    let st;
+    try {
+      st = await fetchJSON(`launch/${launchId}`);
+    } catch {
+      removeJob(launchId);
+      setStatus("Job no longer found; cleared from saved jobs");
+      return;
+    }
+    document.getElementById("launch").textContent = JSON.stringify(st, null, 2);
+
+    const urls = st?.access?.urls ?? [];
+    if (urls.length > 0) {
+      const statusEl = document.getElementById("status");
+      statusEl.innerHTML = "App is reachable: " + urls
+        .map(u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
+        .join(", ");
+      const btn = findActionButton(repo, tag);
+      if (btn) btn.replaceWith(makeOpenLink(urls[0], btn.className));
+      return;
+    }
+    if (st?.status === "Succeeded" || st?.status === "Failed") {
+      setStatus(`Job ${st.status}; access cleaned up`);
+      removeJob(launchId);
+      return;
+    }
+    setStatus("Waiting for LoadBalancer...");
+  }
 }
 
 function renderApps(apps) {
@@ -27,6 +95,8 @@ function renderApps(apps) {
     const action = document.createElement("td");
     const btn = document.createElement("button");
     btn.textContent = "Launch";
+    btn.dataset.repo = app.repo;
+    btn.dataset.tag = app.tag ?? "latest";
     btn.onclick = async () => {
       setStatus(`Launching ${app.repo}:${app.tag ?? "latest"}...`);
       try {
@@ -46,27 +116,8 @@ function renderApps(apps) {
 
         const launchId = launchResp.launchId;
         if (launchId) {
-          // Poll until the LB ingress is assigned (or job finishes).
-          for (let i = 0; i < 60; i++) {
-            await new Promise((r) => setTimeout(r, 2000));
-            const st = await fetchJSON(`launch/${launchId}`);
-            document.getElementById("launch").textContent = JSON.stringify(
-              st,
-              null,
-              2
-            );
-
-            const urls = st?.access?.urls ?? [];
-            if (urls.length > 0) {
-              setStatus("App is reachable");
-              break;
-            }
-            if (st?.status === "Succeeded" || st?.status === "Failed") {
-              setStatus(`Job ${st.status}; access cleaned up`);
-              break;
-            }
-            setStatus("Waiting for LoadBalancer...");
-          }
+          saveJob(launchId, app.repo, app.tag ?? "latest");
+          await pollLaunch(launchId, app.repo, app.tag ?? "latest");
         }
       } catch (e) {
         document.getElementById("launch").textContent = String(e);
@@ -84,11 +135,36 @@ function renderApps(apps) {
   }
 }
 
+async function restoreJobs() {
+  for (const job of loadJobs()) {
+    let st;
+    try {
+      st = await fetchJSON(`launch/${job.launchId}`);
+    } catch {
+      // Job is gone (expired or never existed); drop it
+      removeJob(job.launchId);
+      continue;
+    }
+
+    const urls = st?.access?.urls ?? [];
+    if (urls.length > 0) {
+      const btn = findActionButton(job.repo, job.tag);
+      if (btn) btn.replaceWith(makeOpenLink(urls[0], btn.className));
+    } else if (st?.status === "Succeeded" || st?.status === "Failed") {
+      removeJob(job.launchId);
+    } else {
+      // Still running — resume polling in the background
+      pollLaunch(job.launchId, job.repo, job.tag);
+    }
+  }
+}
+
 async function refresh() {
   setStatus("Refreshing... ");
   try {
     const data = await fetchJSON("apps");
     renderApps(data.apps ?? []);
+    await restoreJobs();
     setStatus(`Loaded ${data.apps?.length ?? 0} app(s)`);
   } catch (e) {
     setStatus("Refresh failed");
