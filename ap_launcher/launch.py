@@ -252,6 +252,30 @@ class KubeLauncher:
                 raise
         return True
 
+    def delete_job(self, *, launch_id: str) -> dict:
+        selector = f"ap-python.fnal.gov/launch-id={launch_id}"
+        jobs = self.batch.list_namespaced_job(
+            namespace=self.namespace, label_selector=selector
+        )
+        if not jobs.items:
+            self._delete_service_for_launch(launch_id=launch_id)
+            return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
+
+        job = jobs.items[0]
+        job_name = job.metadata.name
+        try:
+            self.batch.delete_namespaced_job(
+                name=job_name,
+                namespace=self.namespace,
+                body=client.V1DeleteOptions(propagation_policy="Foreground"),
+            )
+        except ApiException as e:
+            if getattr(e, "status", None) != 404:
+                raise
+
+        self._delete_service_for_launch(launch_id=launch_id)
+        return {"launchId": launch_id, "deleted": True, "jobName": job_name}
+
     def get_launch_status(self, *, launch_id: str) -> dict:
         # Find job by label selector
         selector = f"ap-python.fnal.gov/launch-id={launch_id}"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -8,9 +9,37 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .config import load_web_config
+from .config import WebConfig, load_web_config
 from .discovery import HarborClient
 from .launch import KubeLauncher, LaunchLimitExceededError
+
+
+def _make_harbor_client(cfg: WebConfig) -> HarborClient:
+    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+        from .test.fakes import FakeHarborClient
+
+        return FakeHarborClient()  # type: ignore[return-value]
+    return HarborClient(
+        cfg.harbor_base_url,
+        cfg.harbor_project,
+        cfg.harbor_username,
+        cfg.harbor_password,
+    )
+
+
+def _make_kube_launcher(cfg: WebConfig) -> KubeLauncher:
+    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+        from .test.fakes import FakeKubeLauncher
+
+        return FakeKubeLauncher(namespace=cfg.workload_namespace)  # type: ignore[return-value]
+    return KubeLauncher(
+        namespace=cfg.workload_namespace,
+        kubeconfig_content=cfg.kubeconfig,
+        app_target_port=cfg.app_target_port,
+        lb_port=cfg.lb_port,
+        lb_annotations_json=cfg.lb_annotations_json,
+    )
+
 
 _URL_PREFIX = "/ap-python"
 
@@ -19,7 +48,7 @@ class StripPrefixMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.scope["path"]
         if path.startswith(_URL_PREFIX):
-            request.scope["path"] = path[len(_URL_PREFIX):] or "/"
+            request.scope["path"] = path[len(_URL_PREFIX) :] or "/"
         return await call_next(request)
 
 
@@ -50,13 +79,7 @@ def create_app() -> FastAPI:
 
     @app.get("/apps")
     def list_apps() -> dict:
-        hc = HarborClient(
-            cfg.harbor_base_url,
-            cfg.harbor_project,
-            cfg.harbor_username,
-            cfg.harbor_password,
-        )
-
+        hc = _make_harbor_client(cfg)
         apps = hc.list_latest_apps()
         return {
             "source": "harbor",
@@ -79,13 +102,7 @@ def create_app() -> FastAPI:
         )
         image = f"{registry_host}/{repo}:{tag}"
 
-        kl = KubeLauncher(
-            namespace=cfg.workload_namespace,
-            kubeconfig_content=cfg.kubeconfig,
-            app_target_port=cfg.app_target_port,
-            lb_port=cfg.lb_port,
-            lb_annotations_json=cfg.lb_annotations_json,
-        )
+        kl = _make_kube_launcher(cfg)
         try:
             res = kl.create_job(image=image, repo=repo, tag=tag)
         except LaunchLimitExceededError as e:
@@ -105,14 +122,11 @@ def create_app() -> FastAPI:
 
     @app.get("/launch/{launch_id}")
     def launch_status(launch_id: str) -> dict:
-        kl = KubeLauncher(
-            namespace=cfg.workload_namespace,
-            kubeconfig_content=cfg.kubeconfig,
-            app_target_port=cfg.app_target_port,
-            lb_port=cfg.lb_port,
-            lb_annotations_json=cfg.lb_annotations_json,
-        )
-        return kl.get_launch_status(launch_id=launch_id)
+        return _make_kube_launcher(cfg).get_launch_status(launch_id=launch_id)
+
+    @app.delete("/launch/{launch_id}")
+    def delete_launch(launch_id: str) -> dict:
+        return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
 
     return app
 

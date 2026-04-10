@@ -213,8 +213,9 @@ describe("renderApps", () => {
     renderApps([{ repo: "proj/app", tag: "latest" }]);
     const row = document.querySelector("#apps tr");
     expect(row.textContent).toContain("proj/app");
-    expect(row.textContent).toContain("latest");
-    expect(row.querySelector("button").textContent).toBe("Launch");
+    const btn = row.querySelector("button");
+    expect(btn.dataset.tag).toBe("latest");
+    expect(btn.textContent).toBe("Launch");
   });
 
   test("button has data-repo and data-tag attributes", () => {
@@ -226,14 +227,14 @@ describe("renderApps", () => {
 
   test("null tag is shown as 'latest'", () => {
     renderApps([{ repo: "r", tag: null }]);
-    const cells = document.querySelectorAll("#apps td");
-    expect(cells[1].textContent).toBe("latest");
+    const btn = document.querySelector("button[data-repo]");
+    expect(btn.dataset.tag).toBe("latest");
   });
 
   test("undefined tag is shown as 'latest'", () => {
     renderApps([{ repo: "r" }]);
-    const cells = document.querySelectorAll("#apps td");
-    expect(cells[1].textContent).toBe("latest");
+    const btn = document.querySelector("button[data-repo]");
+    expect(btn.dataset.tag).toBe("latest");
   });
 
   test("renders empty tbody when apps is empty", () => {
@@ -270,6 +271,7 @@ describe("pollLaunch", () => {
       text: () => Promise.resolve(""),
     });
 
+    saveJob("id1", "r", "t");
     pollLaunch("id1", "r", "t");
     await tick();
 
@@ -283,6 +285,7 @@ describe("pollLaunch", () => {
       text: () => Promise.resolve(""),
     });
 
+    saveJob("id1", "r", "t");
     const p = pollLaunch("id1", "r", "t");
     await tick();
     await p;
@@ -290,7 +293,7 @@ describe("pollLaunch", () => {
     expect(document.getElementById("status").innerHTML).toContain("1.2.3.4");
   });
 
-  test("replaces Launch button with Open link when URL available", async () => {
+  test("replaces Launch button with Connect link when URL available", async () => {
     renderApps([{ repo: "myrepo", tag: "latest" }]);
 
     global.fetch = jest.fn().mockResolvedValue({
@@ -299,6 +302,7 @@ describe("pollLaunch", () => {
       text: () => Promise.resolve(""),
     });
 
+    saveJob("id1", "myrepo", "latest");
     const p = pollLaunch("id1", "myrepo", "latest");
     await tick();
     await p;
