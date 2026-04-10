@@ -3,7 +3,7 @@ UVICORN ?= .venv/bin/uvicorn
 IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
 
-.PHONY: help install test test-cov dev mock lint docker-build docker-run
+.PHONY: help install test test-backend test-frontend test-cov dev mock lint docker-build docker-run
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -12,8 +12,13 @@ help:
 install: ## Install all dependencies (including dev) via uv
 	uv sync
 
-test: ## Run the test suite
-	$(PYTHON) -m pytest
+test: test-backend test-frontend ## Run all tests (backend + frontend)
+
+test-backend: ## Run backend (Python) tests only
+	$(PYTHON) -m pytest tests/unit tests/integration
+
+test-frontend: ## Run frontend (Jest) tests
+	cd tests/frontend && npm test
 
 test-cov: ## Run tests with coverage report
 	$(PYTHON) -m pytest --cov=ap_launcher --cov-report=term-missing
