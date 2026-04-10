@@ -47,15 +47,86 @@ function makeOpenLink(url, className) {
   return a;
 }
 
+function makeLaunchButton(repo, tag, className) {
+  const btn = document.createElement("button");
+  btn.textContent = "Launch";
+  btn.dataset.repo = repo;
+  btn.dataset.tag = tag;
+  if (className) btn.className = className;
+  btn.onclick = async () => {
+    setStatus(`Launching ${repo}:${tag}...`);
+    try {
+      const payload = { repo, tag };
+      const launchResp = await fetchJSON("launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      document.getElementById("launch").textContent = JSON.stringify(
+        launchResp,
+        null,
+        2
+      );
+      setStatus("Launch requested; waiting for LoadBalancer...");
+
+      const launchId = launchResp.launchId;
+      if (launchId) {
+        saveJob(launchId, repo, tag);
+        await pollLaunch(launchId, repo, tag);
+      }
+    } catch (e) {
+      document.getElementById("launch").textContent = String(e);
+      setStatus("Launch failed");
+    }
+  };
+  return btn;
+}
+
+function makeEndButton(launchId, repo, tag, className) {
+  const btn = document.createElement("button");
+  btn.textContent = "End";
+  btn.dataset.repo = repo;
+  btn.dataset.tag = tag;
+  btn.dataset.launchId = launchId;
+  if (className) btn.className = className;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    setStatus("Ending job...");
+    try {
+      await fetchJSON(`launch/${launchId}`, { method: "DELETE" });
+      removeJob(launchId);
+      setStatus("Job ended");
+    } catch (e) {
+      setStatus(`Failed to end job: ${e}`);
+      btn.disabled = false;
+      return;
+    }
+    btn.replaceWith(makeLaunchButton(repo, tag, className));
+  };
+  return btn;
+}
+
 async function pollLaunch(launchId, repo, tag) {
+  const actionBtn = findActionButton(repo, tag);
+  if (actionBtn && actionBtn.dataset.launchId !== launchId) {
+    actionBtn.replaceWith(makeEndButton(launchId, repo, tag, actionBtn.className));
+  }
+
   for (let i = 0; i < 60; i++) {
     await new Promise((r) => setTimeout(r, 2000));
+
+    // Stop polling if user already ended the job
+    if (!loadJobs().some(j => j.launchId === launchId)) return;
+
     let st;
     try {
       st = await fetchJSON(`launch/${launchId}`);
     } catch {
       removeJob(launchId);
       setStatus("Job no longer found; cleared from saved jobs");
+      const endBtn = findActionButton(repo, tag);
+      if (endBtn) endBtn.replaceWith(makeLaunchButton(repo, tag, endBtn.className));
       return;
     }
     document.getElementById("launch").textContent = JSON.stringify(st, null, 2);
@@ -66,13 +137,15 @@ async function pollLaunch(launchId, repo, tag) {
       statusEl.innerHTML = "App is reachable: " + urls
         .map(u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
         .join(", ");
-      const btn = findActionButton(repo, tag);
-      if (btn) btn.replaceWith(makeOpenLink(urls[0], btn.className));
+      const endBtn = findActionButton(repo, tag);
+      if (endBtn) endBtn.replaceWith(makeOpenLink(urls[0], endBtn.className));
       return;
     }
     if (st?.status === "Succeeded" || st?.status === "Failed") {
       setStatus(`Job ${st.status}; access cleaned up`);
       removeJob(launchId);
+      const endBtn = findActionButton(repo, tag);
+      if (endBtn) endBtn.replaceWith(makeLaunchButton(repo, tag, endBtn.className));
       return;
     }
     setStatus("Waiting for LoadBalancer...");
@@ -93,39 +166,7 @@ function renderApps(apps) {
     tag.textContent = app.tag ?? "latest";
 
     const action = document.createElement("td");
-    const btn = document.createElement("button");
-    btn.textContent = "Launch";
-    btn.dataset.repo = app.repo;
-    btn.dataset.tag = app.tag ?? "latest";
-    btn.onclick = async () => {
-      setStatus(`Launching ${app.repo}:${app.tag ?? "latest"}...`);
-      try {
-        const payload = { repo: app.repo, tag: app.tag ?? "latest" };
-        const launchResp = await fetchJSON("launch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        document.getElementById("launch").textContent = JSON.stringify(
-          launchResp,
-          null,
-          2
-        );
-        setStatus("Launch requested; waiting for LoadBalancer...");
-
-        const launchId = launchResp.launchId;
-        if (launchId) {
-          saveJob(launchId, app.repo, app.tag ?? "latest");
-          await pollLaunch(launchId, app.repo, app.tag ?? "latest");
-        }
-      } catch (e) {
-        document.getElementById("launch").textContent = String(e);
-        setStatus("Launch failed");
-      }
-    };
-
-    action.appendChild(btn);
+    action.appendChild(makeLaunchButton(app.repo, app.tag ?? "latest"));
 
     tr.appendChild(repo);
     tr.appendChild(tag);
@@ -153,7 +194,9 @@ async function restoreJobs() {
     } else if (st?.status === "Succeeded" || st?.status === "Failed") {
       removeJob(job.launchId);
     } else {
-      // Still running — resume polling in the background
+      // Still running — show End button and resume polling in the background
+      const btn = findActionButton(job.repo, job.tag);
+      if (btn) btn.replaceWith(makeEndButton(job.launchId, job.repo, job.tag, btn.className));
       pollLaunch(job.launchId, job.repo, job.tag);
     }
   }

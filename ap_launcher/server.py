@@ -114,6 +114,17 @@ def create_app() -> FastAPI:
         )
         return kl.get_launch_status(launch_id=launch_id)
 
+    @app.delete("/launch/{launch_id}")
+    def delete_launch(launch_id: str) -> dict:
+        kl = KubeLauncher(
+            namespace=cfg.workload_namespace,
+            kubeconfig_content=cfg.kubeconfig,
+            app_target_port=cfg.app_target_port,
+            lb_port=cfg.lb_port,
+            lb_annotations_json=cfg.lb_annotations_json,
+        )
+        return kl.delete_job(launch_id=launch_id)
+
     return app
 
 
