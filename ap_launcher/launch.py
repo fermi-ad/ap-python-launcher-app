@@ -10,8 +10,8 @@ from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 
 
-MAX_JOBS_TOTAL = 15
-MAX_JOBS_PER_APP = 5
+MAX_JOBS_TOTAL = 45
+MAX_JOBS_PER_APP = 10
 
 
 class LaunchLimitExceededError(RuntimeError):
