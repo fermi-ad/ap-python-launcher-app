@@ -46,13 +46,13 @@ function setRowStatus(repo, tag, text) {
   }
 }
 
-function makeOpenLink(url, className) {
+function makeConnectLink(url, className) {
   const a = document.createElement("a");
-  a.textContent = "Open";
+  a.textContent = "Connect";
   a.href = url;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
-  a.className = (className ? className + " " : "") + "open-btn";
+  a.className = (className ? className + " " : "") + "connect-btn";
   return a;
 }
 
@@ -113,7 +113,7 @@ function makeEndButton(launchId, repo, tag, className) {
       return;
     }
     const cell = btn.parentNode;
-    if (cell) cell.querySelectorAll("a.open-btn").forEach(a => a.remove());
+    if (cell) cell.querySelectorAll("a.connect-btn").forEach(a => a.remove());
     btn.replaceWith(makeLaunchButton(repo, tag, className));
   };
   return btn;
@@ -154,7 +154,7 @@ async function pollLaunch(launchId, repo, tag) {
         .join(", ");
       setRowStatus(repo, tag, "Ready");
       const endBtn = findActionButton(repo, tag);
-      if (endBtn) endBtn.parentNode.insertBefore(makeOpenLink(urls[0], endBtn.className), endBtn);
+      if (endBtn) endBtn.parentNode.insertBefore(makeConnectLink(urls[0], endBtn.className), endBtn);
       return;
     }
     if (st?.status === "Succeeded" || st?.status === "Failed") {
@@ -212,10 +212,10 @@ async function restoreJobs() {
       setRowStatus(job.repo, job.tag, "Ready");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) {
-        const openLink = makeOpenLink(urls[0], btn.className);
+        const connectLink = makeConnectLink(urls[0], btn.className);
         const endBtn = makeEndButton(job.launchId, job.repo, job.tag, btn.className);
-        btn.replaceWith(openLink);
-        openLink.after(endBtn);
+        btn.replaceWith(connectLink);
+        connectLink.after(endBtn);
       }
     } else if (st?.status === "Succeeded" || st?.status === "Failed") {
       removeJob(job.launchId);

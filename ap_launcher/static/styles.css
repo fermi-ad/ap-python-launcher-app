@@ -46,22 +46,26 @@ button {
     line-height: 1.25;
 }
 
+button:hover {
+    background: #1d4ed8;
+}
+
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
 button.end-btn {
-    background: #dc2626;
-}
-
-button.end-btn:hover {
     background: #b91c1c;
 }
 
-a.open-btn {
+button.end-btn:hover {
+    background: #dc2626;
+}
+
+a.connect-btn {
     display: inline-block;
-    background: #2563eb;
+    background: #15803d;
     border-radius: 10px;
     padding: 10px 12px;
     color: white;
@@ -71,8 +75,8 @@ a.open-btn {
     margin-right: 16px;
 }
 
-a.open-btn:hover {
-    background: #1d4ed8;
+a.connect-btn:hover {
+    background: #16a34a;
 }
 
 .status {
