@@ -10,6 +10,7 @@ import requests
 class HarborRepo:
     repo: str
     tag: str
+    all_tags: tuple[str, ...] = ()
 
 
 class HarborClient:
@@ -103,7 +104,12 @@ class HarborClient:
         return artifacts
 
     def list_latest_apps(self) -> list[HarborRepo]:
-        """Return one entry per repo for tag 'latest' if present."""
+        """Return one entry per repo for the artifact tagged 'latest'.
+
+        ``all_tags`` contains every tag on that artifact (including 'latest').
+        ``tag`` is the first numeric-looking tag found on that artifact, falling
+        back to 'latest' when no other tag exists.
+        """
         apps: list[HarborRepo] = []
         for repo in self.list_repositories():
             try:
@@ -116,9 +122,33 @@ class HarborClient:
                 tags = art.get("tags")
                 if not isinstance(tags, list):
                     continue
-                if any(isinstance(t, dict) and t.get("name") == "latest" for t in tags):
-                    apps.append(HarborRepo(repo=repo, tag="latest"))
-                    break
+                tag_names: list[str] = []
+                for t in tags:
+                    if isinstance(t, dict):
+                        name = t.get("name")
+                        if isinstance(name, str):
+                            tag_names.append(name)
+                if "latest" not in tag_names:
+                    continue
+                # Prefer a tag that looks like a version number (contains digits).
+                # Fall back to the first non-'latest' tag, then to 'latest'.
+                numeric_tags = [t for t in tag_names if any(c.isdigit() for c in t)]
+                non_latest_tags = [t for t in tag_names if t != "latest"]
+                resolved_tag = (
+                    numeric_tags[0]
+                    if numeric_tags
+                    else non_latest_tags[0]
+                    if non_latest_tags
+                    else "latest"
+                )
+                apps.append(
+                    HarborRepo(
+                        repo=repo,
+                        tag=resolved_tag,
+                        all_tags=tuple(tag_names),
+                    )
+                )
+                break
 
         apps.sort(key=lambda a: a.repo)
         return apps

@@ -143,6 +143,7 @@ class KubeLauncher:
             metadata=client.V1ObjectMeta(name=job_name, labels=labels),
             spec=client.V1JobSpec(
                 ttl_seconds_after_finished=3600,
+                active_deadline_seconds=86400,  # 24-hour hard timeout
                 backoff_limit=0,
                 template=client.V1PodTemplateSpec(
                     metadata=client.V1ObjectMeta(labels=labels),
