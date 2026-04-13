@@ -198,7 +198,7 @@ function renderApps(apps) {
   }
 }
 
-async function restoreJobs(currentTags) {
+async function restoreJobs(currentTags = new Map()) {
   // currentTags: Map<repo, resolvedTag> from the latest /apps response.
   for (const job of loadJobs()) {
     // If the saved tag no longer matches the current resolved tag for this

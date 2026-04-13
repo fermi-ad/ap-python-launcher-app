@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ap_launcher.config import WebConfig
+from ap_launcher.discovery import HarborRepo
 from ap_launcher.launch import MAX_JOBS_TOTAL, MAX_JOBS_PER_APP
 
 
@@ -15,8 +16,10 @@ from ap_launcher.launch import MAX_JOBS_TOTAL, MAX_JOBS_PER_APP
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_response(data, raise_http_error=False):
     import requests
+
     resp = MagicMock()
     resp.json.return_value = data
     if raise_http_error:
@@ -64,6 +67,7 @@ def integrated_client(mocker):
 
     from fastapi.testclient import TestClient
     from ap_launcher.server import create_app
+
     return TestClient(create_app())
 
 
@@ -71,11 +75,12 @@ def integrated_client(mocker):
 # Apps discovery
 # ---------------------------------------------------------------------------
 
+
 def test_apps_discovery_returns_only_latest_tagged_repos(mocker, integrated_client):
     side_effects = [
         _make_response([{"name": "ap-python/app-a"}, {"name": "ap-python/app-b"}]),
         _make_response([{"tags": [{"name": "latest"}]}]),  # app-a has latest
-        _make_response([{"tags": [{"name": "v1.0"}]}]),    # app-b does not
+        _make_response([{"tags": [{"name": "v1.0"}]}]),  # app-b does not
     ]
     mocker.patch("requests.Session.get", side_effect=side_effects)
     resp = integrated_client.get("/apps")
@@ -96,8 +101,22 @@ def test_apps_discovery_returns_empty_when_no_repos(mocker, integrated_client):
 # Full launch flow
 # ---------------------------------------------------------------------------
 
+
+def _mock_harbor_for_launch(mocker, repo: str = "ap-python/myapp", tag: str = "latest"):
+    """Mock HarborClient.list_latest_apps to return a single matching repo."""
+    mocker.patch(
+        "ap_launcher.server._make_harbor_client",
+        return_value=MagicMock(
+            list_latest_apps=MagicMock(
+                return_value=[HarborRepo(repo=repo, tag=tag, all_tags=(tag,))]
+            )
+        ),
+    )
+
+
 def test_full_launch_flow(mocker, integrated_client):
-    # Mock Harbor: no apps needed for launch endpoint
+    # Mock Harbor: return a matching app so the launch endpoint can resolve the tag
+    _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
     mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
@@ -108,7 +127,9 @@ def test_full_launch_flow(mocker, integrated_client):
     mock_batch.create_namespaced_job.return_value = MagicMock()
     mock_core.create_namespaced_service.return_value = MagicMock()
 
-    resp = integrated_client.post("/launch", json={"repo": "ap-python/myapp", "tag": "latest"})
+    resp = integrated_client.post(
+        "/launch", json={"repo": "ap-python/myapp", "tag": "latest"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["launchId"]
@@ -117,6 +138,7 @@ def test_full_launch_flow(mocker, integrated_client):
 
 
 def test_full_launch_then_status_running(mocker, integrated_client):
+    _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
     mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
@@ -126,7 +148,9 @@ def test_full_launch_then_status_running(mocker, integrated_client):
     mock_batch.create_namespaced_job.return_value = MagicMock()
     mock_core.create_namespaced_service.return_value = MagicMock()
 
-    launch_resp = integrated_client.post("/launch", json={"repo": "ap-python/myapp", "tag": "latest"})
+    launch_resp = integrated_client.post(
+        "/launch", json={"repo": "ap-python/myapp", "tag": "latest"}
+    )
     launch_id = launch_resp.json()["launchId"]
 
     # Now poll status — simulate Running job
@@ -147,7 +171,9 @@ def test_full_launch_then_status_running(mocker, integrated_client):
 # Concurrency limits
 # ---------------------------------------------------------------------------
 
+
 def test_global_job_limit_returns_429(mocker, integrated_client):
+    _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
     mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
@@ -157,11 +183,14 @@ def test_global_job_limit_returns_429(mocker, integrated_client):
         *[_make_job(active=1) for _ in range(MAX_JOBS_TOTAL)]
     )
 
-    resp = integrated_client.post("/launch", json={"repo": "ap-python/myapp", "tag": "latest"})
+    resp = integrated_client.post(
+        "/launch", json={"repo": "ap-python/myapp", "tag": "latest"}
+    )
     assert resp.status_code == 429
 
 
 def test_per_app_job_limit_returns_429(mocker, integrated_client):
+    _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
     mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
@@ -171,13 +200,16 @@ def test_per_app_job_limit_returns_429(mocker, integrated_client):
     at_per_app = _jobs_list(*[_make_job(active=1) for _ in range(MAX_JOBS_PER_APP)])
     mock_batch.list_namespaced_job.side_effect = [under_total, at_per_app]
 
-    resp = integrated_client.post("/launch", json={"repo": "ap-python/myapp", "tag": "latest"})
+    resp = integrated_client.post(
+        "/launch", json={"repo": "ap-python/myapp", "tag": "latest"}
+    )
     assert resp.status_code == 429
 
 
 # ---------------------------------------------------------------------------
 # Readyz reflects env vars
 # ---------------------------------------------------------------------------
+
 
 def test_readyz_reflects_env_vars(mocker, monkeypatch):
     monkeypatch.setenv("AP_HARBOR_PROJECT", "my-custom-project")
@@ -187,6 +219,7 @@ def test_readyz_reflects_env_vars(mocker, monkeypatch):
 
     from fastapi.testclient import TestClient
     from ap_launcher.server import create_app
+
     c = TestClient(create_app())
     resp = c.get("/readyz")
     assert resp.status_code == 200
@@ -199,6 +232,7 @@ def test_readyz_reflects_env_vars(mocker, monkeypatch):
 # Harbor auth passed through
 # ---------------------------------------------------------------------------
 
+
 def test_harbor_auth_passed_through(mocker, monkeypatch):
     monkeypatch.setenv("AP_HARBOR_USERNAME", "robotuser")
     monkeypatch.setenv("AP_HARBOR_PASSWORD", "robotpass")
@@ -207,7 +241,9 @@ def test_harbor_auth_passed_through(mocker, monkeypatch):
 
     # Capture HarborClient constructor args
     captured = {}
-    original_init = __import__("ap_launcher.discovery", fromlist=["HarborClient"]).HarborClient.__init__
+    original_init = __import__(
+        "ap_launcher.discovery", fromlist=["HarborClient"]
+    ).HarborClient.__init__
 
     def patched_init(self, base_url, project, username, password):
         captured["username"] = username
@@ -219,6 +255,7 @@ def test_harbor_auth_passed_through(mocker, monkeypatch):
 
     from fastapi.testclient import TestClient
     from ap_launcher.server import create_app
+
     c = TestClient(create_app())
     c.get("/apps")
     assert captured.get("username") == "robotuser"
