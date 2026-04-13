@@ -84,17 +84,25 @@ def create_app() -> FastAPI:
         return {
             "source": "harbor",
             "project": cfg.harbor_project,
-            "apps": [{"repo": a.repo, "tag": a.tag} for a in apps],
+            "apps": [
+                {"repo": a.repo, "tag": a.tag, "allTags": list(a.all_tags)}
+                for a in apps
+            ],
         }
 
     @app.post("/launch")
     def launch(body: dict) -> dict:
         repo = body.get("repo")
-        tag = body.get("tag", "latest")
         if not isinstance(repo, str) or not repo:
             raise HTTPException(status_code=400, detail="Missing/invalid repo")
-        if not isinstance(tag, str) or not tag:
-            raise HTTPException(status_code=400, detail="Missing/invalid tag")
+
+        # Resolve the tag server-side so the client cannot specify an arbitrary one.
+        hc = _make_harbor_client(cfg)
+        apps = hc.list_latest_apps()
+        match = next((a for a in apps if a.repo == repo), None)
+        if match is None:
+            raise HTTPException(status_code=404, detail=f"App not found: {repo}")
+        tag = match.tag
 
         # Image ref must be a registry host + repository path.
         registry_host = cfg.harbor_base_url.replace("https://", "").replace(
@@ -117,6 +125,7 @@ def create_app() -> FastAPI:
             "jobName": res.job_name,
             "serviceName": res.service_name,
             "namespace": res.namespace,
+            "tag": tag,
             "access": {"status": "Pending", "urls": []},
         }
 

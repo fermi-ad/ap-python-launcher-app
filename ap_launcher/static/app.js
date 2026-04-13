@@ -63,13 +63,13 @@ function makeLaunchButton(repo, tag, className) {
   btn.dataset.tag = tag;
   if (className) btn.className = className;
   btn.onclick = async () => {
-    setStatus(`Launching ${repo}:${tag}...`);
+    setStatus(`Launching ${repo}...`);
     try {
-      const payload = { repo, tag };
+      // Send repo only — backend resolves the tag from Harbor.
       const launchResp = await fetchJSON("launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ repo }),
       });
 
       document.getElementById("launch").textContent = JSON.stringify(
@@ -80,9 +80,11 @@ function makeLaunchButton(repo, tag, className) {
       setStatus("Launch requested; waiting for LoadBalancer...");
 
       const launchId = launchResp.launchId;
+      // Use the tag the backend resolved, not what the UI was showing.
+      const resolvedTag = launchResp.tag ?? tag;
       if (launchId) {
-        saveJob(launchId, repo, tag);
-        await pollLaunch(launchId, repo, tag);
+        saveJob(launchId, repo, resolvedTag);
+        await pollLaunch(launchId, repo, resolvedTag);
       }
     } catch (e) {
       document.getElementById("launch").textContent = String(e);
@@ -196,8 +198,16 @@ function renderApps(apps) {
   }
 }
 
-async function restoreJobs() {
+async function restoreJobs(currentTags) {
+  // currentTags: Map<repo, resolvedTag> from the latest /apps response.
   for (const job of loadJobs()) {
+    // If the saved tag no longer matches the current resolved tag for this
+    // repo, the job is for a stale image — drop it and show Launch.
+    if (currentTags.has(job.repo) && currentTags.get(job.repo) !== job.tag) {
+      removeJob(job.launchId);
+      continue;
+    }
+
     let st;
     try {
       st = await fetchJSON(`launch/${job.launchId}`);
@@ -233,9 +243,12 @@ async function refresh() {
   setStatus("Refreshing... ");
   try {
     const data = await fetchJSON("apps");
-    renderApps(data.apps ?? []);
-    await restoreJobs();
-    setStatus(`Loaded ${data.apps?.length ?? 0} app(s)`);
+    const apps = data.apps ?? [];
+    renderApps(apps);
+    // Build a map of repo → current resolved tag for stale-job detection.
+    const currentTags = new Map(apps.map(a => [a.repo, a.tag]));
+    await restoreJobs(currentTags);
+    setStatus(`Loaded ${apps.length} app(s)`);
   } catch (e) {
     setStatus("Refresh failed");
     document.getElementById("launch").textContent = String(e);

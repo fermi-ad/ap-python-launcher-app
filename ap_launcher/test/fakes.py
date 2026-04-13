@@ -15,9 +15,9 @@ from ..launch import LaunchResult
 
 
 DEFAULT_REPOS = [
-    HarborRepo("ap-python/demo-app", "latest"),
-    HarborRepo("ap-python/analysis-tool", "latest"),
-    HarborRepo("ap-python/jupyter-env", "latest"),
+    HarborRepo("ap-python/demo-app", "v1.0.0", ("v1.0.0", "latest")),
+    HarborRepo("ap-python/analysis-tool", "v2.3.1", ("v2.3.1", "latest")),
+    HarborRepo("ap-python/jupyter-env", "v0.9.0", ("v0.9.0", "latest")),
 ]
 
 
