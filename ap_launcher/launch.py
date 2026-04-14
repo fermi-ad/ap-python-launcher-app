@@ -163,6 +163,15 @@ class KubeLauncher:
                                     requests={"cpu": "50m", "memory": "256Mi"},
                                     limits={"cpu": "200m", "memory": "512Mi"},
                                 ),
+                                readiness_probe=client.V1Probe(
+                                    http_get=client.V1HTTPGetAction(
+                                        path="/",
+                                        port=self.app_target_port,
+                                    ),
+                                    initial_delay_seconds=5,
+                                    period_seconds=3,
+                                    failure_threshold=10,
+                                ),
                             )
                         ],
                     ),
@@ -302,7 +311,16 @@ class KubeLauncher:
         pods = self.core.list_namespaced_pod(
             namespace=self.namespace, label_selector=selector
         )
-        pod_name = pods.items[0].metadata.name if pods.items else None
+        pod = pods.items[0] if pods.items else None
+        pod_name = pod.metadata.name if pod else None
+
+        # Only expose access URLs once the pod's readiness probe has passed.
+        pod_ready = False
+        if pod and pod.status and pod.status.conditions:
+            for cond in pod.status.conditions:
+                if cond.type == "Ready" and cond.status == "True":
+                    pod_ready = True
+                    break
 
         svc = self._get_service(launch_id=launch_id)
         service_name = svc.metadata.name if svc and svc.metadata else None
@@ -314,6 +332,7 @@ class KubeLauncher:
             svc = None
             service_name = None
             urls = []
+            pod_ready = False
 
         return {
             "launchId": launch_id,
@@ -327,7 +346,7 @@ class KubeLauncher:
             else None,
             "serviceName": service_name,
             "access": {
-                "status": "Ready" if urls else "Pending",
+                "status": "Ready" if (urls and pod_ready) else "Pending",
                 "urls": urls,
             },
         }

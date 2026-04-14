@@ -91,9 +91,15 @@ def test_invalid_port_raises_value_error(monkeypatch):
 
 
 def test_lb_annotations_json_preserved_as_string(monkeypatch):
-    monkeypatch.setenv("AP_LB_ANNOTATIONS_JSON", '{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}')
+    monkeypatch.setenv(
+        "AP_LB_ANNOTATIONS_JSON",
+        '{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}',
+    )
     cfg = load_web_config()
-    assert cfg.lb_annotations_json == '{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}'
+    assert (
+        cfg.lb_annotations_json
+        == '{"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"}'
+    )
 
 
 def test_webconfig_is_frozen():
