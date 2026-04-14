@@ -115,21 +115,26 @@ class FakeKubeLauncher:
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = self.__class__._jobs[launch_id]
-        job["poll_count"] += 1
-        count = job["poll_count"]
 
-        if count <= 1:
-            status, urls, access_status = "Pending", [], "Pending"
-        elif count <= 2:
-            status, urls, access_status = "Running", [], "Pending"
-        elif count <= 3:
-            status = "Running"
-            urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
-            access_status = "Pending"
+        # If deletion has been requested, surface that explicitly.
+        if job.get("deleting") is True:
+            status, urls, access_status = "Ending", [], "Pending"
         else:
-            status = "Running"
-            urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
-            access_status = "Ready"
+            job["poll_count"] += 1
+            count = job["poll_count"]
+
+            if count <= 1:
+                status, urls, access_status = "Pending", [], "Pending"
+            elif count <= 2:
+                status, urls, access_status = "Running", [], "Pending"
+            elif count <= 3:
+                status = "Running"
+                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                access_status = "Pending"
+            else:
+                status = "Running"
+                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                access_status = "Ready"
 
         return {
             "launchId": launch_id,
@@ -148,9 +153,12 @@ class FakeKubeLauncher:
 
     def delete_job(self, *, launch_id: str) -> dict:
         # Simulate async-ish deletion latency so the UI polling is visible in mock mode.
-        time.sleep(2.5)
-
+        # Mark the job as "deleting" immediately so GET status can return "Ending".
         if launch_id not in self.__class__._jobs:
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
+
+        self.__class__._jobs[launch_id]["deleting"] = True
+        time.sleep(2.5)
+
         job = self.__class__._jobs.pop(launch_id)
         return {"launchId": launch_id, "deleted": True, "jobName": job["job_name"]}

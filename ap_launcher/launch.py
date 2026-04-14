@@ -298,14 +298,25 @@ class KubeLauncher:
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = jobs.items[0]
-        s = job.status
-        status = "Pending"
-        if s and s.active:
-            status = "Running"
-        if s and s.succeeded:
-            status = "Succeeded"
-        if s and s.failed:
-            status = "Failed"
+
+        # If the Job is in the process of being deleted, surface that explicitly.
+        # This allows the UI to disable Connect while termination is in progress.
+        deletion_ts = getattr(
+            getattr(job, "metadata", None), "deletion_timestamp", None
+        )
+
+        if deletion_ts is not None:
+            status = "Ending"
+            s = job.status
+        else:
+            s = job.status
+            status = "Pending"
+            if s and s.active:
+                status = "Running"
+            if s and s.succeeded:
+                status = "Succeeded"
+            if s and s.failed:
+                status = "Failed"
 
         # Get a pod (if any) with same selector
         pods = self.core.list_namespaced_pod(
@@ -326,8 +337,8 @@ class KubeLauncher:
         service_name = svc.metadata.name if svc and svc.metadata else None
         urls = self._get_service_urls(svc) if svc else []
 
-        # Cleanup service when job is no longer running, or pod disappeared.
-        if status in {"Succeeded", "Failed"} or pod_name is None:
+        # Cleanup service when job is no longer running, is being deleted, or pod disappeared.
+        if status in {"Succeeded", "Failed", "Ending"} or pod_name is None:
             self._delete_service_for_launch(launch_id=launch_id)
             svc = None
             service_name = None

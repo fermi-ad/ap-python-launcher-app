@@ -17,10 +17,19 @@ from ap_launcher.launch import (
 # ---------------------------------------------------------------------------
 
 
-def _make_job(active=None, succeeded=None, failed=None, name="test-job", labels=None):
+def _make_job(
+    active=None,
+    succeeded=None,
+    failed=None,
+    name="test-job",
+    labels=None,
+    *,
+    deletion_timestamp=None,
+):
     job = MagicMock()
     job.metadata.name = name
     job.metadata.labels = labels or {}
+    job.metadata.deletion_timestamp = deletion_timestamp
     job.status.active = active
     job.status.succeeded = succeeded
     job.status.failed = failed
@@ -399,6 +408,18 @@ def test_get_launch_status_cleans_up_service_on_failed(
     svc = _service("my-svc")
     _setup_status(mock_batch_api, mock_core_api, job=job, svc=svc)
     launcher.get_launch_status(launch_id="test-id")
+    mock_core_api.delete_namespaced_service.assert_called()
+
+
+def test_get_launch_status_ending_when_deletion_timestamp_set(
+    launcher, mock_batch_api, mock_core_api
+):
+    job = _make_job(active=1, deletion_timestamp="2026-01-01T00:00:00Z")
+    svc = _service("my-svc")
+    _setup_status(mock_batch_api, mock_core_api, job=job, pods=["pod-1"], svc=svc)
+    result = launcher.get_launch_status(launch_id="test-id")
+    assert result["status"] == "Ending"
+    # Service should be cleaned up while ending.
     mock_core_api.delete_namespaced_service.assert_called()
 
 
