@@ -8,6 +8,7 @@ Shared by:
 
 from __future__ import annotations
 
+import time
 import uuid
 
 from ..discovery import HarborRepo
@@ -117,11 +118,11 @@ class FakeKubeLauncher:
         job["poll_count"] += 1
         count = job["poll_count"]
 
-        if count <= 2:
+        if count <= 1:
             status, urls, access_status = "Pending", [], "Pending"
-        elif count <= 5:
+        elif count <= 2:
             status, urls, access_status = "Running", [], "Pending"
-        elif count <= 7:
+        elif count <= 3:
             status = "Running"
             urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
             access_status = "Pending"
@@ -146,6 +147,10 @@ class FakeKubeLauncher:
         }
 
     def delete_job(self, *, launch_id: str) -> dict:
+        # Simulate async-ish deletion latency so the UI polling is visible in mock mode.
+        # Keep it short to avoid slowing tests too much.
+        time.sleep(0.75)
+
         if launch_id not in self.__class__._jobs:
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
         job = self.__class__._jobs.pop(launch_id)

@@ -26,6 +26,7 @@ const JOBS_KEY = "ap_launcher_jobs";
 // Captured references — populated once in beforeAll.
 let loadJobs, saveJob, removeJob, fetchJSON, setStatus;
 let renderApps, pollLaunch, restoreJobs, refresh;
+let pollUntilEnded;
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -84,15 +85,16 @@ beforeAll(async () => {
   window.eval(APP_JS_SRC);
 
   // Capture references from global.
-  loadJobs    = global.loadJobs;
-  saveJob     = global.saveJob;
-  removeJob   = global.removeJob;
-  fetchJSON   = global.fetchJSON;
-  setStatus   = global.setStatus;
-  renderApps  = global.renderApps;
-  pollLaunch  = global.pollLaunch;
-  restoreJobs = global.restoreJobs;
-  refresh     = global.refresh;
+  loadJobs        = global.loadJobs;
+  saveJob         = global.saveJob;
+  removeJob       = global.removeJob;
+  fetchJSON       = global.fetchJSON;
+  setStatus       = global.setStatus;
+  renderApps      = global.renderApps;
+  pollLaunch      = global.pollLaunch;
+  restoreJobs     = global.restoreJobs;
+  refresh         = global.refresh;
+  pollUntilEnded  = global.pollUntilEnded;
 
   // Flush the initial refresh() Promise so it completes before any test runs.
   await new Promise((r) => setTimeout(r, 0));
@@ -240,6 +242,95 @@ describe("renderApps", () => {
   test("renders empty tbody when apps is empty", () => {
     renderApps([]);
     expect(document.querySelector("#apps").innerHTML).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pollUntilEnded — fake timers to skip delays
+// ---------------------------------------------------------------------------
+
+describe("pollUntilEnded", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  /** Advance fake clock and flush pending Promises. */
+  async function tick(ms) {
+    jest.advanceTimersByTime(ms);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+  }
+
+  test("returns ended=true when status becomes NotFound", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: "Running" }),
+        text: () => Promise.resolve(""),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: "NotFound" }),
+        text: () => Promise.resolve(""),
+      });
+
+    const p = pollUntilEnded("id1", { timeoutMs: 5000 });
+    await tick(250);
+    await tick(250);
+
+    expect(await p).toEqual({ ended: true, status: "NotFound" });
+  });
+
+  test("calls onStatus with each fetched status", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: "Running" }),
+        text: () => Promise.resolve(""),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: "NotFound" }),
+        text: () => Promise.resolve(""),
+      });
+
+    const seen = [];
+    const p = pollUntilEnded("id1", { timeoutMs: 5000, onStatus: (st) => seen.push(st.status) });
+    await tick(250);
+    await tick(250);
+    await p;
+
+    expect(seen).toEqual(["Running", "NotFound"]);
+  });
+
+  test("treats fetch error as ended (NotFound)", async () => {
+    global.fetch = mockFetchNetworkError("gone");
+
+    const res = await pollUntilEnded("id1", { timeoutMs: 5000 });
+    expect(res).toEqual({ ended: true, status: "NotFound" });
+  });
+
+  test("returns ended=false on timeout", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: "Running" }),
+      text: () => Promise.resolve(""),
+    });
+
+    const p = pollUntilEnded("id1", { timeoutMs: 1000 });
+    // Sum of delays: 250+250+500 = 1000; next loop would exceed.
+    await tick(250);
+    await tick(250);
+    await tick(500);
+    const res = await p;
+
+    expect(res).toEqual({ ended: false, status: "Timeout" });
   });
 });
 
