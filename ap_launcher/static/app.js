@@ -149,7 +149,8 @@ async function pollLaunch(launchId, repo, tag) {
     setRowStatus(repo, tag, st?.status ?? "—");
 
     const urls = st?.access?.urls ?? [];
-    if (urls.length > 0) {
+    const accessStatus = st?.access?.status ?? "Pending";
+    if (urls.length > 0 && accessStatus === "Ready") {
       const statusEl = document.getElementById("status");
       statusEl.innerHTML = "App is reachable: " + urls
         .map(u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
@@ -218,7 +219,8 @@ async function restoreJobs(currentTags = new Map()) {
     }
 
     const urls = st?.access?.urls ?? [];
-    if (urls.length > 0) {
+    const accessStatus = st?.access?.status ?? "Pending";
+    if (urls.length > 0 && accessStatus === "Ready") {
       setRowStatus(job.repo, job.tag, "Ready");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) {

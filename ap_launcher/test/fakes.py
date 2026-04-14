@@ -51,7 +51,8 @@ class FakeKubeLauncher:
     Status progression per job (counted by ``get_launch_status`` calls):
       polls 1-2 → Pending
       polls 3-5 → Running
-      poll  6+  → Running + access URL (frontend shows "Ready")
+      polls 6-7 → Running + access URL, but access.status=Pending (pod not ready yet)
+      poll  8+  → Running + access URL, access.status=Ready
     """
 
     _jobs: dict[str, dict] = {}
@@ -117,12 +118,17 @@ class FakeKubeLauncher:
         count = job["poll_count"]
 
         if count <= 2:
-            status, urls = "Pending", []
+            status, urls, access_status = "Pending", [], "Pending"
         elif count <= 5:
-            status, urls = "Running", []
+            status, urls, access_status = "Running", [], "Pending"
+        elif count <= 7:
+            status = "Running"
+            urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+            access_status = "Pending"
         else:
             status = "Running"
             urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+            access_status = "Ready"
 
         return {
             "launchId": launch_id,
@@ -134,7 +140,7 @@ class FakeKubeLauncher:
             "completionTime": None,
             "serviceName": job["service_name"],
             "access": {
-                "status": "Ready" if urls else "Pending",
+                "status": access_status,
                 "urls": urls,
             },
         }

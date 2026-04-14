@@ -281,7 +281,7 @@ describe("pollLaunch", () => {
   test("exits and shows URL when access.urls is populated", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: "Running", access: { urls: ["http://1.2.3.4:80/"] } }),
+      json: () => Promise.resolve({ status: "Running", access: { status: "Ready", urls: ["http://1.2.3.4:80/"] } }),
       text: () => Promise.resolve(""),
     });
 
@@ -298,7 +298,7 @@ describe("pollLaunch", () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: "Running", access: { urls: ["http://host:80/"] } }),
+      json: () => Promise.resolve({ status: "Running", access: { status: "Ready", urls: ["http://host:80/"] } }),
       text: () => Promise.resolve(""),
     });
 
@@ -425,7 +425,7 @@ describe("restoreJobs", () => {
     saveJob("ready-id", "myrepo", "latest");
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ status: "Running", access: { urls: ["http://host:80/"] } }),
+      json: () => Promise.resolve({ status: "Running", access: { status: "Ready", urls: ["http://host:80/"] } }),
       text: () => Promise.resolve(""),
     });
     await restoreJobs();
