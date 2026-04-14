@@ -30,11 +30,8 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function pollUntilEnded(launchId, { timeoutMs = 30000, onStatus } = {}) {
+async function pollUntilEnded(launchId, { timeoutMs = 30000, pollMs = 2000, onStatus } = {}) {
   const start = Date.now();
-  // Fast at first, then back off a bit.
-  const delaysMs = [250, 250, 500, 500, 1000, 1000, 2000, 2000, 3000, 3000];
-  let i = 0;
 
   while (Date.now() - start < timeoutMs) {
     try {
@@ -49,9 +46,7 @@ async function pollUntilEnded(launchId, { timeoutMs = 30000, onStatus } = {}) {
       return { ended: true, status: "NotFound" };
     }
 
-    const delay = delaysMs[Math.min(i, delaysMs.length - 1)];
-    i += 1;
-    await sleep(delay);
+    await sleep(pollMs);
   }
 
   return { ended: false, status: "Timeout" };
