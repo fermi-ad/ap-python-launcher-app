@@ -148,8 +148,7 @@ class FakeKubeLauncher:
 
     def delete_job(self, *, launch_id: str) -> dict:
         # Simulate async-ish deletion latency so the UI polling is visible in mock mode.
-        # Keep it short to avoid slowing tests too much.
-        time.sleep(0.75)
+        time.sleep(2.5)
 
         if launch_id not in self.__class__._jobs:
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}

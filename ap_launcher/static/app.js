@@ -72,13 +72,33 @@ function setRowStatus(repo, tag, text) {
   }
 }
 
-function makeConnectLink(url, className) {
+function isPendingStatus(st) {
+  const status = String(st?.status ?? "").toLowerCase();
+  const accessStatus = String(st?.access?.status ?? "").toLowerCase();
+  return status === "pending" || accessStatus === "pending";
+}
+
+function isEndingStatus(st) {
+  const status = String(st?.status ?? "").toLowerCase();
+  const accessStatus = String(st?.access?.status ?? "").toLowerCase();
+  return status === "ending" || accessStatus === "ending";
+}
+
+function makeConnectLink(url, className, repo, tag) {
   const a = document.createElement("a");
   a.textContent = "Connect";
   a.href = url;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
   a.className = (className ? className + " " : "") + "connect-btn";
+  if (repo) a.dataset.repo = repo;
+  if (tag) a.dataset.tag = tag;
+  a.onclick = (e) => {
+    if (a.classList.contains("disabled")) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
   return a;
 }
 
@@ -189,7 +209,21 @@ async function pollLaunch(launchId, repo, tag) {
       return;
     }
     document.getElementById("launch").textContent = JSON.stringify(st, null, 2);
-    setRowStatus(repo, tag, st?.status ?? "—");
+
+    // Status column rules:
+    // - Show "Pending" if either st.status or st.access.status is pending.
+    // - Otherwise show st.status (or "—" if missing).
+    if (isPendingStatus(st)) {
+      setRowStatus(repo, tag, "Pending");
+    } else {
+      setRowStatus(repo, tag, st?.status ?? "—");
+    }
+
+    // Disable Connect while the job is ending.
+    const connectLink = document.querySelector(
+      `a.connect-btn[data-repo="${repo}"][data-tag="${tag}"]`
+    );
+    if (connectLink) connectLink.classList.toggle("disabled", isEndingStatus(st));
 
     const urls = st?.access?.urls ?? [];
     const accessStatus = st?.access?.status ?? "Pending";
@@ -200,7 +234,7 @@ async function pollLaunch(launchId, repo, tag) {
         .join(", ");
       setRowStatus(repo, tag, "Ready");
       const endBtn = findActionButton(repo, tag);
-      if (endBtn) endBtn.parentNode.insertBefore(makeConnectLink(urls[0], endBtn.className), endBtn);
+      if (endBtn) endBtn.parentNode.insertBefore(makeConnectLink(urls[0], endBtn.className, repo, tag), endBtn);
       return;
     }
     if (st?.status === "Succeeded" || st?.status === "Failed") {
@@ -267,7 +301,7 @@ async function restoreJobs(currentTags = new Map()) {
       setRowStatus(job.repo, job.tag, "Ready");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) {
-        const connectLink = makeConnectLink(urls[0], btn.className);
+        const connectLink = makeConnectLink(urls[0], btn.className, job.repo, job.tag);
         const endBtn = makeEndButton(job.launchId, job.repo, job.tag, btn.className);
         btn.replaceWith(connectLink);
         connectLink.after(endBtn);
