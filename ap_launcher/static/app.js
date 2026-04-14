@@ -26,6 +26,37 @@ async function fetchJSON(url, opts) {
   return await res.json();
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function pollUntilEnded(launchId, { timeoutMs = 30000, onStatus } = {}) {
+  const start = Date.now();
+  // Fast at first, then back off a bit.
+  const delaysMs = [250, 250, 500, 500, 1000, 1000, 2000, 2000, 3000, 3000];
+  let i = 0;
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const st = await fetchJSON(`launch/${launchId}`);
+      if (typeof onStatus === "function") onStatus(st);
+      if (st?.status === "NotFound" || st?.status === "Succeeded" || st?.status === "Failed") {
+        return { ended: true, status: st?.status ?? "NotFound" };
+      }
+    } catch {
+      // If the status endpoint errors (e.g. 404), treat as ended.
+      if (typeof onStatus === "function") onStatus({ launchId, status: "NotFound" });
+      return { ended: true, status: "NotFound" };
+    }
+
+    const delay = delaysMs[Math.min(i, delaysMs.length - 1)];
+    i += 1;
+    await sleep(delay);
+  }
+
+  return { ended: false, status: "Timeout" };
+}
+
 function setStatus(text) {
   document.getElementById("status").textContent = text;
 }
@@ -104,16 +135,33 @@ function makeEndButton(launchId, repo, tag, className) {
   btn.onclick = async () => {
     btn.disabled = true;
     setStatus("Ending job...");
+    setRowStatus(repo, tag, "Ending...");
+
     try {
       await fetchJSON(`launch/${launchId}`, { method: "DELETE" });
-      removeJob(launchId);
-      setStatus("Job ended");
-      setRowStatus(repo, tag, "—");
     } catch (e) {
       setStatus(`Failed to end job: ${e}`);
+      setRowStatus(repo, tag, "—");
       btn.disabled = false;
       return;
     }
+
+    // Poll until the job is actually gone (or terminal), since Kubernetes deletion is async.
+    const ended = await pollUntilEnded(launchId, {
+      timeoutMs: 30000,
+      onStatus: (st) => {
+        document.getElementById("launch").textContent = JSON.stringify(st, null, 2);
+      },
+    });
+    removeJob(launchId);
+
+    if (ended.ended) {
+      setStatus("Job ended");
+    } else {
+      setStatus("End requested; still terminating...");
+    }
+    setRowStatus(repo, tag, "—");
+
     const cell = btn.parentNode;
     if (cell) cell.querySelectorAll("a.connect-btn").forEach(a => a.remove());
     btn.replaceWith(makeLaunchButton(repo, tag, className));
@@ -149,7 +197,8 @@ async function pollLaunch(launchId, repo, tag) {
     setRowStatus(repo, tag, st?.status ?? "—");
 
     const urls = st?.access?.urls ?? [];
-    if (urls.length > 0) {
+    const accessStatus = st?.access?.status ?? "Pending";
+    if (urls.length > 0 && accessStatus === "Ready") {
       const statusEl = document.getElementById("status");
       statusEl.innerHTML = "App is reachable: " + urls
         .map(u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`)
@@ -218,7 +267,8 @@ async function restoreJobs(currentTags = new Map()) {
     }
 
     const urls = st?.access?.urls ?? [];
-    if (urls.length > 0) {
+    const accessStatus = st?.access?.status ?? "Pending";
+    if (urls.length > 0 && accessStatus === "Ready") {
       setRowStatus(job.repo, job.tag, "Ready");
       const btn = findActionButton(job.repo, job.tag);
       if (btn) {
