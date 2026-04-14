@@ -1,15 +1,14 @@
-from __future__ import annotations
-
 """Integration tests: full API flows through create_app() with only
 Harbor HTTP (requests.Session) and Kubernetes client mocked out."""
+
+from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
-from ap_launcher.config import WebConfig
 from ap_launcher.discovery import HarborRepo
-from ap_launcher.launch import MAX_JOBS_TOTAL, MAX_JOBS_PER_APP
+from ap_launcher.launch import MAX_JOBS_PER_APP, MAX_JOBS_TOTAL
 
 
 # ---------------------------------------------------------------------------
@@ -29,8 +28,9 @@ def _make_response(data, raise_http_error=False):
     return resp
 
 
-def _make_job(active=None, succeeded=None, failed=None):
+def _make_job(active=None, succeeded=None, failed=None, *, deletion_timestamp=None):
     j = MagicMock()
+    j.metadata.deletion_timestamp = deletion_timestamp
     j.status.active = active
     j.status.succeeded = succeeded
     j.status.failed = failed

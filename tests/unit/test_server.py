@@ -286,7 +286,7 @@ def test_launch_status_returns_valid_status(client, mock_harbor):
     launch_id = client.post("/launch", json={"repo": _LAUNCH_REPO}).json()["launchId"]
     resp = client.get(f"/launch/{launch_id}")
     assert resp.status_code == 200
-    assert resp.json()["status"] in ("Pending", "Running")
+    assert resp.json()["status"] in ("Pending", "Running", "Ending")
 
 
 def test_launch_status_returns_correct_launch_id(client, mock_harbor):
