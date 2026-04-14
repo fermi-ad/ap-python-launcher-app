@@ -262,7 +262,11 @@ describe("pollUntilEnded", () => {
   /** Advance fake clock and flush pending Promises. */
   async function tick(ms) {
     jest.advanceTimersByTime(ms);
-    for (let i = 0; i < 10; i++) await Promise.resolve();
+    // Flush microtasks + any immediately-scheduled timers.
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      jest.runOnlyPendingTimers();
+    }
   }
 
   test("returns ended=true when status becomes NotFound", async () => {
@@ -279,9 +283,9 @@ describe("pollUntilEnded", () => {
         text: () => Promise.resolve(""),
       });
 
-    const p = pollUntilEnded("id1", { timeoutMs: 5000 });
-    await tick(250);
-    await tick(250);
+    const p = pollUntilEnded("id1", { timeoutMs: 5000, pollMs: 0 });
+    await tick(0);
+    await tick(0);
 
     expect(await p).toEqual({ ended: true, status: "NotFound" });
   });
@@ -301,9 +305,9 @@ describe("pollUntilEnded", () => {
       });
 
     const seen = [];
-    const p = pollUntilEnded("id1", { timeoutMs: 5000, onStatus: (st) => seen.push(st.status) });
-    await tick(250);
-    await tick(250);
+    const p = pollUntilEnded("id1", { timeoutMs: 5000, pollMs: 0, onStatus: (st) => seen.push(st.status) });
+    await tick(0);
+    await tick(0);
     await p;
 
     expect(seen).toEqual(["Running", "NotFound"]);
@@ -323,11 +327,9 @@ describe("pollUntilEnded", () => {
       text: () => Promise.resolve(""),
     });
 
-    const p = pollUntilEnded("id1", { timeoutMs: 1000 });
-    // Sum of delays: 250+250+500 = 1000; next loop would exceed.
-    await tick(250);
-    await tick(250);
-    await tick(500);
+    const p = pollUntilEnded("id1", { timeoutMs: 1000, pollMs: 2000 });
+    // No poll will happen before timeout; we just need to advance past timeout.
+    await tick(1000);
     const res = await p;
 
     expect(res).toEqual({ ended: false, status: "Timeout" });
