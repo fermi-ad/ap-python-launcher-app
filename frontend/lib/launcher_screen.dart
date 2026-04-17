@@ -341,7 +341,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
+          constraints: const BoxConstraints(maxWidth: 1280),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -360,19 +360,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
                             onPressed: _refresh,
                           ),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _statusText,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.color
-                                        ?.withValues(alpha: 0.85),
-                                  ),
-                            ),
-                          ),
+                          Expanded(child: _StatusText(text: _statusText)),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -403,6 +391,59 @@ class _LauncherScreenState extends State<LauncherScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StatusText extends StatelessWidget {
+  final String text;
+
+  const _StatusText({required this.text});
+
+  static final RegExp _urlRegex = RegExp(r'https?://\S+');
+
+  @override
+  Widget build(BuildContext context) {
+    final match = _urlRegex.firstMatch(text);
+    final url = match?.group(0);
+
+    final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.85),
+    );
+
+    if (url == null) {
+      return Text(text, style: baseStyle);
+    }
+
+    final before = text.substring(0, match!.start);
+    final after = text.substring(match.end);
+
+    final linkColor = Theme.of(context).colorScheme.primary;
+
+    return RichText(
+      text: TextSpan(
+        style: baseStyle,
+        children: [
+          if (before.isNotEmpty) TextSpan(text: before),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: InkWell(
+              onTap: () => openInNewTab(url),
+              child: Text(
+                url,
+                style: baseStyle?.copyWith(
+                  color: linkColor,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          if (after.isNotEmpty) TextSpan(text: after),
+        ],
       ),
     );
   }
@@ -462,63 +503,88 @@ class _AppsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Repository')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Action')),
-        ],
-        rows: apps.map((a) {
-          final tag = a.tag ?? 'latest';
-          final state = rowStateFor(a.repo, tag);
-          final repoDisplay = a.repo.replaceFirst(RegExp(r'^ap-python/'), '');
-
-          final statusText = switch (state.kind) {
-            RowStateKind.idle => '—',
-            RowStateKind.pending => 'Pending',
-            RowStateKind.running => 'Running',
-            RowStateKind.ready => 'Ready',
-            RowStateKind.ending => 'Ending...',
-          };
-
-          Widget action;
-          if (state.kind == RowStateKind.ready && state.connectUrl != null) {
-            action = Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ConnectButton(url: state.connectUrl!),
-                const SizedBox(width: 16),
-                _EndButton(
-                  onPressed: state.launchId == null
-                      ? null
-                      : () => onEnd(state.launchId!, a.repo, tag),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: DataTable(
+              columnSpacing: 24,
+              columns: const [
+                DataColumn(
+                  label: SizedBox(width: 360, child: Text('Repository')),
                 ),
+                DataColumn(label: SizedBox(width: 120, child: Text('Status'))),
+                DataColumn(label: SizedBox(width: 260, child: Text('Action'))),
               ],
-            );
-          } else if (state.kind == RowStateKind.pending ||
-              state.kind == RowStateKind.running ||
-              state.kind == RowStateKind.ending) {
-            action = _EndButton(
-              onPressed:
-                  (state.kind == RowStateKind.ending || state.launchId == null)
-                  ? null
-                  : () => onEnd(state.launchId!, a.repo, tag),
-            );
-          } else {
-            action = _LaunchButton(onPressed: () => onLaunch(a.repo, tag));
-          }
+              rows: apps.map((a) {
+                final tag = a.tag ?? 'latest';
+                final state = rowStateFor(a.repo, tag);
+                final repoDisplay = a.repo.replaceFirst(
+                  RegExp(r'^ap-python/'),
+                  '',
+                );
 
-          return DataRow(
-            cells: [
-              DataCell(Text(repoDisplay)),
-              DataCell(Text(statusText)),
-              DataCell(action),
-            ],
-          );
-        }).toList(),
-      ),
+                final statusText = switch (state.kind) {
+                  RowStateKind.idle => '—',
+                  RowStateKind.pending => 'Pending',
+                  RowStateKind.running => 'Running',
+                  RowStateKind.ready => 'Ready',
+                  RowStateKind.ending => 'Ending...',
+                };
+
+                Widget action;
+                if (state.kind == RowStateKind.ready &&
+                    state.connectUrl != null) {
+                  action = Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ConnectButton(url: state.connectUrl!),
+                      const SizedBox(width: 16),
+                      _EndButton(
+                        onPressed: state.launchId == null
+                            ? null
+                            : () => onEnd(state.launchId!, a.repo, tag),
+                      ),
+                    ],
+                  );
+                } else if (state.kind == RowStateKind.pending ||
+                    state.kind == RowStateKind.running ||
+                    state.kind == RowStateKind.ending) {
+                  action = _EndButton(
+                    onPressed:
+                        (state.kind == RowStateKind.ending ||
+                            state.launchId == null)
+                        ? null
+                        : () => onEnd(state.launchId!, a.repo, tag),
+                  );
+                } else {
+                  action = _LaunchButton(
+                    onPressed: () => onLaunch(a.repo, tag),
+                  );
+                }
+
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      SizedBox(
+                        width: 360,
+                        child: Text(
+                          repoDisplay,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(SizedBox(width: 120, child: Text(statusText))),
+                    DataCell(SizedBox(width: 260, child: action)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -552,9 +618,16 @@ class _ConnectButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BisonButton.filled(
-      buttonLabel: 'Connect',
-      onPressed: () => openInNewTab(url),
+    final success = Theme.of(context).colorScheme.tertiary;
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: Theme.of(context).colorScheme.copyWith(primary: success),
+      ),
+      child: BisonButton.filled(
+        buttonLabel: 'Connect',
+        onPressed: () => openInNewTab(url),
+      ),
     );
   }
 }
@@ -566,6 +639,36 @@ class _LaunchStatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final monoStyle =
+        Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontFamily: 'RobotoMono',
+          fontFamilyFallback: const [
+            'ui-monospace',
+            'SFMono-Regular',
+            'Menlo',
+            'Monaco',
+            'Consolas',
+            'Liberation Mono',
+            'Courier New',
+            'monospace',
+          ],
+          height: 1.25,
+        ) ??
+        const TextStyle(
+          fontFamily: 'RobotoMono',
+          fontFamilyFallback: [
+            'ui-monospace',
+            'SFMono-Regular',
+            'Menlo',
+            'Monaco',
+            'Consolas',
+            'Liberation Mono',
+            'Courier New',
+            'monospace',
+          ],
+          height: 1.25,
+        );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -573,10 +676,7 @@ class _LaunchStatusPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF23324F)),
       ),
-      child: SelectableText(
-        text,
-        style: const TextStyle(fontFamily: 'monospace', height: 1.25),
-      ),
+      child: SelectableText(text, style: monoStyle),
     );
   }
 }
