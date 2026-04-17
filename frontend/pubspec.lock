@@ -9,6 +9,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.1"
+  bison_design_system:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "2e88bf36e1ac37b165851c36a87e4b83e418deaf"
+      url: "https://github.com/fermi-ad/design-system.git"
+    source: git
+    version: "0.1.3"
   boolean_selector:
     dependency: transitive
     description:
@@ -49,6 +58,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  disable_web_context_menu:
+    dependency: transitive
+    description:
+      name: disable_web_context_menu
+      sha256: "63ee55e099509d4442c54512f63b5ced3a21447494efc1e08d16b6728654580e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -112,6 +129,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: transitive
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.2"
   leak_tracker:
     dependency: transitive
     description:
@@ -350,7 +375,7 @@ packages:
     source: hosted
     version: "15.1.0"
   web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: web
       sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
@@ -367,4 +392,4 @@ packages:
     version: "1.1.0"
 sdks:
   dart: ">=3.11.4 <4.0.0"
-  flutter: ">=3.35.0"
+  flutter: ">=3.41.4"

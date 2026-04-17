@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'package:bison_design_system/bison_design_system.dart';
+
 import 'api_service.dart';
 import 'connect.dart';
 import 'job_store.dart';
@@ -353,9 +355,9 @@ class _LauncherScreenState extends State<LauncherScreen> {
                     children: [
                       Row(
                         children: [
-                          ElevatedButton(
+                          BisonButton.filled(
+                            buttonLabel: 'Refresh',
                             onPressed: _refresh,
-                            child: const Text('Refresh'),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -367,7 +369,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
                                         .textTheme
                                         .bodyMedium
                                         ?.color
-                                        ?.withOpacity(0.85),
+                                        ?.withValues(alpha: 0.85),
                                   ),
                             ),
                           ),
@@ -424,7 +426,7 @@ class _Header extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(
               context,
-            ).textTheme.bodyMedium?.color?.withOpacity(0.8),
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -528,7 +530,7 @@ class _LaunchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(onPressed: onPressed, child: const Text('Launch'));
+    return BisonButton.filled(buttonLabel: 'Launch', onPressed: onPressed);
   }
 }
 
@@ -539,11 +541,7 @@ class _EndButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB91C1C)),
-      onPressed: onPressed,
-      child: const Text('End'),
-    );
+    return BisonButton.destructive(buttonLabel: 'End', onPressed: onPressed);
   }
 }
 
@@ -554,10 +552,9 @@ class _ConnectButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF15803D)),
+    return BisonButton.filled(
+      buttonLabel: 'Connect',
       onPressed: () => openInNewTab(url),
-      child: const Text('Connect'),
     );
   }
 }
