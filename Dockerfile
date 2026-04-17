@@ -1,5 +1,15 @@
 # syntax=docker/dockerfile:1
 
+# --- Stage 1: build Flutter web assets ---
+FROM ghcr.io/cirruslabs/flutter:stable AS flutter-builder
+
+WORKDIR /build
+COPY frontend/ /build/frontend/
+RUN cd /build/frontend \
+  && flutter pub get \
+  && flutter build web --release
+
+# --- Stage 2: Python runtime ---
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -22,6 +32,9 @@ COPY pyproject.toml /app/pyproject.toml
 COPY uv.lock /app/uv.lock
 
 RUN uv sync --no-dev --frozen
+
+# Copy Flutter build output into the static directory served by FastAPI
+COPY --from=flutter-builder /build/frontend/build/web/ /app/ap_launcher/static/
 
 # Copy the source last
 COPY ap_launcher/ /app/ap_launcher/

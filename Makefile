@@ -2,8 +2,9 @@ PYTHON  ?= .venv/bin/python
 UVICORN ?= .venv/bin/uvicorn
 IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
+FVM     ?= fvm
 
-.PHONY: help install test test-backend test-frontend test-cov dev mock lint docker-build docker-run
+.PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend docker-build docker-run
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -32,7 +33,13 @@ mock: ## Run the server with fakes — no Harbor or k8s needed
 lint: ## Run ruff (if available)
 	$(PYTHON) -m ruff check ap_launcher tests
 
-docker-build: ## Build the Docker image
+build-frontend: ## Build Flutter web frontend into ap_launcher/static/
+	cd frontend && $(FVM) flutter pub get
+	cd frontend && $(FVM) flutter build web --release
+	rm -rf ap_launcher/static/*
+	cp -r frontend/build/web/. ap_launcher/static/
+
+docker-build: build-frontend ## Build the Docker image
 	docker build -t $(IMAGE) .
 
 docker-run: ## Run the Docker image locally (mock mode)
