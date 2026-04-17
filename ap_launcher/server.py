@@ -58,13 +58,6 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ap-python-launcher", version="0.1.0")
     app.add_middleware(StripPrefixMiddleware)
 
-    static_dir = Path(__file__).parent / "static"
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-    @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
-        return (static_dir / "index.html").read_text(encoding="utf-8")
-
     @app.get("/healthz")
     def healthz() -> dict:
         return {"ok": True}
@@ -136,6 +129,10 @@ def create_app() -> FastAPI:
     @app.delete("/launch/{launch_id}")
     def delete_launch(launch_id: str) -> dict:
         return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
+
+    static_dir = Path(__file__).parent / "static"
+    # Serve Flutter web build output at the root (/, /flutter_bootstrap.js, /assets/*, etc.)
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
     return app
 

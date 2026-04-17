@@ -48,7 +48,7 @@ def test_get_root_returns_html(client):
     resp = client.get("/")
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
-    assert "AP Python Launcher" in resp.text
+    assert "flutter_bootstrap.js" in resp.text
 
 
 # ---------------------------------------------------------------------------

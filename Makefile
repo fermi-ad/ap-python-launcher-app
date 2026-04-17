@@ -15,11 +15,11 @@ install: ## Install all dependencies (including dev) via uv
 
 test: test-backend test-frontend ## Run all tests (backend + frontend)
 
+test-frontend: ## Run Flutter (frontend/) tests
+	cd frontend && $(FVM) flutter test
+
 test-backend: ## Run backend (Python) tests only
 	$(PYTHON) -m pytest tests/unit tests/integration
-
-test-frontend: ## Run frontend (Jest) tests
-	cd tests/frontend && npm test
 
 test-cov: ## Run tests with coverage report
 	$(PYTHON) -m pytest --cov=ap_launcher --cov-report=term-missing
