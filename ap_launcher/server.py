@@ -139,6 +139,14 @@ def create_app() -> FastAPI:
             "Static directory not found; skipping static mount: %s", static_dir
         )
 
+        @app.get("/")
+        def root_fallback() -> str:
+            return (
+                "<!doctype html>"
+                "<html><head><meta charset='utf-8'></head>"
+                "<body><script src='flutter_bootstrap.js'></script></body></html>"
+            )
+
     return app
 
 
