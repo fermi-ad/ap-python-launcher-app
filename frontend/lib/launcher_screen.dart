@@ -248,9 +248,23 @@ class _LauncherScreenState extends State<LauncherScreen> {
       LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(launchId);
-      } catch (_) {
+      } catch (e) {
+        if (e is ApiException && e.statusCode == 404) {
+          await _jobs.removeJob(launchId);
+          _setRowState(repo, tag, const RowState(kind: RowStateKind.idle));
+          _stopPolling(launchId);
+          return;
+        }
+
         await _jobs.removeJob(launchId);
         _setStatus('Job no longer found; cleared from saved jobs');
+        _setRowState(repo, tag, const RowState(kind: RowStateKind.idle));
+        _stopPolling(launchId);
+        return;
+      }
+
+      if (st.status == 'NotFound') {
+        await _jobs.removeJob(launchId);
         _setRowState(repo, tag, const RowState(kind: RowStateKind.idle));
         _stopPolling(launchId);
         return;
@@ -339,6 +353,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1280),
@@ -459,7 +474,7 @@ class _Header extends StatelessWidget {
       children: [
         Text(
           'AP Python Launcher',
-          style: Theme.of(context).textTheme.headlineMedium,
+          style: Theme.of(context).textTheme.displayLarge,
         ),
         const SizedBox(height: 8),
         Text(
@@ -482,8 +497,18 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.bison;
+
     return Card(
-      child: Padding(padding: const EdgeInsets.all(16), child: child),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.corners.cornerMedium),
+        side: BorderSide(color: tokens.theme.borderPlain),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(tokens.spacing.standardSpacing),
+        child: child,
+      ),
     );
   }
 }
@@ -505,6 +530,80 @@ class _AppsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 720;
+
+        if (isNarrow) {
+          return Column(
+            children: apps.map((a) {
+              final tag = a.tag ?? 'latest';
+              final state = rowStateFor(a.repo, tag);
+              final repoDisplay = a.repo.replaceFirst(
+                RegExp(r'^ap-python/'),
+                '',
+              );
+
+              final statusText = switch (state.kind) {
+                RowStateKind.idle => '—',
+                RowStateKind.pending => 'Pending',
+                RowStateKind.running => 'Running',
+                RowStateKind.ready => 'Ready',
+                RowStateKind.ending => 'Ending...',
+              };
+
+              Widget action;
+              if (state.kind == RowStateKind.ready &&
+                  state.connectUrl != null) {
+                action = Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    _ConnectButton(url: state.connectUrl!),
+                    _EndButton(
+                      onPressed: state.launchId == null
+                          ? null
+                          : () => onEnd(state.launchId!, a.repo, tag),
+                    ),
+                  ],
+                );
+              } else if (state.kind == RowStateKind.pending ||
+                  state.kind == RowStateKind.running ||
+                  state.kind == RowStateKind.ending) {
+                action = _EndButton(
+                  onPressed:
+                      (state.kind == RowStateKind.ending ||
+                          state.launchId == null)
+                      ? null
+                      : () => onEnd(state.launchId!, a.repo, tag),
+                );
+              } else {
+                action = _LaunchButton(onPressed: () => onLaunch(a.repo, tag));
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      repoDisplay,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Status: $statusText',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Align(alignment: Alignment.centerLeft, child: action),
+                    const Divider(height: 24),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }
+
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -596,7 +695,11 @@ class _LaunchButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BisonButton.filled(buttonLabel: 'Launch', onPressed: onPressed);
+    return BisonButton.filled(
+      buttonLabel: 'Launch',
+      icon: const Icon(Icons.add),
+      onPressed: onPressed,
+    );
   }
 }
 
@@ -607,7 +710,11 @@ class _EndButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BisonButton.destructive(buttonLabel: 'End', onPressed: onPressed);
+    return BisonButton.destructive(
+      buttonLabel: 'End',
+      icon: const Icon(Icons.delete_outline),
+      onPressed: onPressed,
+    );
   }
 }
 
@@ -626,6 +733,7 @@ class _ConnectButton extends StatelessWidget {
       ),
       child: BisonButton.filled(
         buttonLabel: 'Connect',
+        icon: const Icon(Icons.open_in_new),
         onPressed: () => openInNewTab(url),
       ),
     );
@@ -641,7 +749,7 @@ class _LaunchStatusPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final monoStyle =
         Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'monospace',
           fontFamilyFallback: const [
             'ui-monospace',
             'SFMono-Regular',
@@ -650,12 +758,11 @@ class _LaunchStatusPanel extends StatelessWidget {
             'Consolas',
             'Liberation Mono',
             'Courier New',
-            'monospace',
           ],
           height: 1.25,
         ) ??
         const TextStyle(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'monospace',
           fontFamilyFallback: [
             'ui-monospace',
             'SFMono-Regular',
@@ -664,17 +771,18 @@ class _LaunchStatusPanel extends StatelessWidget {
             'Consolas',
             'Liberation Mono',
             'Courier New',
-            'monospace',
           ],
           height: 1.25,
         );
+
+    final tokens = context.bison;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF23324F)),
+        border: Border.all(color: tokens.theme.borderPlain),
       ),
       child: SelectableText(text, style: monoStyle),
     );
