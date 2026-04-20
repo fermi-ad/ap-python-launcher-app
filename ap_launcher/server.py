@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -131,8 +132,13 @@ def create_app() -> FastAPI:
         return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
 
     static_dir = Path(__file__).parent / "static"
-    # Serve Flutter web build output at the root (/, /flutter_bootstrap.js, /assets/*, etc.)
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+    if static_dir.exists():
+        # Serve Flutter web build output at the root (/, /flutter_bootstrap.js, /assets/*, etc.)
+        app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+    else:
+        logging.getLogger(__name__).warning(
+            "Static directory not found; skipping static mount: %s", static_dir
+        )
 
     return app
 
