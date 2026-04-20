@@ -30,6 +30,7 @@ dev = [
   "pytest-asyncio>=0.23",
   "pytest-cov>=5.0",
   "ruff>=0.15.11",
+  "pre-commit>=3.0",
 ]
 
 [tool.pytest.ini_options]

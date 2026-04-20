@@ -1,0 +1,20 @@
+minimum_pre_commit_version: "3.0.0"
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      - id: ruff
+        args: [--fix]
+        stages: [pre-push]
+      - id: ruff-format
+        stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: dart-pre-commit
+        name: dart_pre_commit
+        entry: bash scripts/pre_commit_dart.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
