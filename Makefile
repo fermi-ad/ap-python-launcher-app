@@ -2,7 +2,7 @@ PYTHON  ?= .venv/bin/python
 UVICORN ?= .venv/bin/uvicorn
 IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
-FVM     ?= ./.fvm/flutter_sdk/bin/flutter
+FVM     ?= ./.fvm/flutter_sdk/bin/
 
 .PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend build-mock docker-build docker-run
 
@@ -16,7 +16,7 @@ install: ## Install all dependencies (including dev) via uv
 test: test-backend test-frontend ## Run all tests (backend + frontend)
 
 test-frontend: ## Run Flutter (frontend/) tests
-	cd frontend && $(FVM) flutter test
+	cd frontend && $(FVM)flutter test
 
 test-backend: ## Run backend (Python) tests only
 	$(PYTHON) -m pytest tests/unit tests/integration
@@ -32,11 +32,11 @@ mock: ## Run the server with fakes — no Harbor or k8s needed
 
 lint: ## Run ruff + flutter analyze
 	$(PYTHON) -m ruff check ap_launcher tests
-	cd frontend && $(FVM) analyze
+	cd frontend && $(FVM)flutter analyze
 
 build-frontend: ## Build Flutter web frontend into ap_launcher/static/
-	cd frontend && $(FVM) flutter pub get
-	cd frontend && $(FVM) flutter build web --release
+	cd frontend && $(FVM)flutter pub get
+	cd frontend && $(FVM)flutter build web --release
 	rm -rf ap_launcher/static/*
 	cp -r frontend/build/web/. ap_launcher/static/
 
