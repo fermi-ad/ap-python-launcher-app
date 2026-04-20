@@ -200,18 +200,27 @@ class AppsTable extends StatelessWidget {
           );
         }
 
+        const double actionsWidth = 260;
+
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
               columnSpacing: 24,
-              columns: const [
-                DataColumn(
-                  label: SizedBox(width: 360, child: Text('Repository')),
+              columns: [
+                const DataColumn(
+                  label: SizedBox(width: 300, child: Text('Repository')),
                 ),
-                DataColumn(label: SizedBox(width: 120, child: Text('Status'))),
-                DataColumn(label: SizedBox(width: 260, child: Text('Action'))),
+                const DataColumn(
+                  label: SizedBox(width: 120, child: Text('Status')),
+                ),
+                DataColumn(
+                  label: SizedBox(
+                    width: actionsWidth,
+                    child: const Text('Actions'),
+                  ),
+                ),
               ],
               rows: apps.map((a) {
                 final tag = a.tag ?? 'latest';
@@ -232,37 +241,51 @@ class AppsTable extends StatelessWidget {
                 Widget action;
                 if (state.kind == RowStateKind.ready &&
                     state.connectUrl != null) {
-                  action = Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ConnectButton(url: state.connectUrl!),
-                      const SizedBox(width: 16),
-                      EndButton(
-                        onPressed: state.launchId == null
-                            ? null
-                            : () => onEnd(state.launchId!, a.repo, tag),
-                      ),
-                    ],
+                  action = SizedBox(
+                    width: actionsWidth,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: ConnectButton(url: state.connectUrl!),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 1,
+                          child: EndButton(
+                            onPressed: state.launchId == null
+                                ? null
+                                : () => onEnd(state.launchId!, a.repo, tag),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 } else if (state.kind == RowStateKind.pending ||
                     state.kind == RowStateKind.running ||
                     state.kind == RowStateKind.ending) {
-                  action = EndButton(
-                    onPressed:
-                        (state.kind == RowStateKind.ending ||
-                            state.launchId == null)
-                        ? null
-                        : () => onEnd(state.launchId!, a.repo, tag),
+                  action = SizedBox(
+                    width: actionsWidth,
+                    child: EndButton(
+                      onPressed:
+                          (state.kind == RowStateKind.ending ||
+                              state.launchId == null)
+                          ? null
+                          : () => onEnd(state.launchId!, a.repo, tag),
+                    ),
                   );
                 } else {
-                  action = LaunchButton(onPressed: () => onLaunch(a.repo, tag));
+                  action = SizedBox(
+                    width: actionsWidth,
+                    child: LaunchButton(onPressed: () => onLaunch(a.repo, tag)),
+                  );
                 }
 
                 return DataRow(
                   cells: [
                     DataCell(
                       SizedBox(
-                        width: 360,
+                        width: 300,
                         child: Text(
                           repoDisplay,
                           overflow: TextOverflow.ellipsis,
@@ -270,7 +293,7 @@ class AppsTable extends StatelessWidget {
                       ),
                     ),
                     DataCell(SizedBox(width: 120, child: Text(statusText))),
-                    DataCell(SizedBox(width: 260, child: action)),
+                    DataCell(SizedBox(width: actionsWidth, child: action)),
                   ],
                 );
               }).toList(),
