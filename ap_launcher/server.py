@@ -6,7 +6,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
