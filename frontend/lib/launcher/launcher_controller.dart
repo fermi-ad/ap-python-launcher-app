@@ -1,28 +1,28 @@
-import 'dart:async';
-import 'dart:convert';
+import 'dart:async' show Future, Timer;
+import 'dart:convert' show JsonEncoder;
 
-import '../api_service.dart';
-import '../job_store.dart';
-import 'launcher_models.dart';
+import '../api_service.dart' as api;
+import '../job_store.dart' as jobs;
+import 'launcher_models.dart' show RowState, RowStateKind;
 
 class LauncherController {
-  final ApiService _api;
-  final JobStore _jobs;
+  final api.ApiService _api;
+  final jobs.JobStore _jobs;
 
   final Duration pollInterval;
   final Duration endPollInterval;
   final Duration endTimeout;
 
   LauncherController({
-    ApiService? api,
-    JobStore? jobs,
+    api.ApiService? apiService,
+    jobs.JobStore? jobStore,
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 30),
-  }) : _api = api ?? HttpApiService(),
-       _jobs = jobs ?? JobStore();
+  }) : _api = apiService ?? api.HttpApiService(),
+       _jobs = jobStore ?? jobs.JobStore();
 
-  List<AppInfo> apps = const [];
+  List<api.AppInfo> apps = const [];
   String statusText = 'Ready';
   String launchJson = 'No new launches';
 
@@ -180,7 +180,7 @@ class LauncherController {
         continue;
       }
 
-      LaunchStatus st;
+      api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(job.launchId);
       } catch (_) {
@@ -237,11 +237,11 @@ class LauncherController {
         return;
       }
 
-      LaunchStatus st;
+      api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(launchId);
       } catch (e) {
-        if (e is ApiException && e.statusCode == 404) {
+        if (e is api.ApiException && e.statusCode == 404) {
           await _jobs.removeJob(launchId);
           _setRowState(
             repo,
@@ -330,7 +330,7 @@ class LauncherController {
     _pollers.remove(launchId)?.cancel();
   }
 
-  bool _isPendingStatus(LaunchStatus st) {
+  bool _isPendingStatus(api.LaunchStatus st) {
     final status = st.status.toLowerCase();
     final accessStatus = st.access.status.toLowerCase();
     return status == 'pending' || accessStatus == 'pending';
@@ -340,7 +340,7 @@ class LauncherController {
     String launchId, {
     required Duration timeout,
     required Duration poll,
-    required void Function(LaunchStatus st) onStatus,
+    required void Function(api.LaunchStatus st) onStatus,
   }) async {
     final start = DateTime.now();
 

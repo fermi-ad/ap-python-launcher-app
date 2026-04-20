@@ -1,6 +1,6 @@
-import 'dart:convert';
+import 'dart:convert' show jsonDecode, jsonEncode;
 
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' show Client, Request, Response;
 
 class ApiException implements Exception {
   final int statusCode;
@@ -100,9 +100,9 @@ abstract class ApiService {
 }
 
 class HttpApiService implements ApiService {
-  final http.Client _client;
+  final Client _client;
 
-  HttpApiService({http.Client? client}) : _client = client ?? http.Client();
+  HttpApiService({Client? client}) : _client = client ?? Client();
 
   Future<Map<String, dynamic>> _fetchJson(
     String path, {
@@ -112,14 +112,14 @@ class HttpApiService implements ApiService {
   }) async {
     final uri = Uri.parse(path);
 
-    final req = http.Request(method, uri);
+    final req = Request(method, uri);
     if (headers != null) req.headers.addAll(headers);
     if (body != null) {
       req.body = body is String ? body : jsonEncode(body);
     }
 
     final streamed = await _client.send(req);
-    final res = await http.Response.fromStream(streamed);
+    final res = await Response.fromStream(streamed);
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw ApiException(
@@ -137,8 +137,8 @@ class HttpApiService implements ApiService {
     final data = await _fetchJson('apps');
     final apps = (data['apps'] as List?) ?? const [];
     return apps
-        .whereType<Map>()
-        .map((m) => AppInfo.fromJson(m.cast<String, dynamic>()))
+        .whereType<Map<String, dynamic>>()
+        .map(AppInfo.fromJson)
         .toList();
   }
 

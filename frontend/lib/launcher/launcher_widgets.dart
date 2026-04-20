@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:bison_design_system/bison_design_system.dart';
+import 'package:bison_design_system/bison_design_system.dart'
+    show BisonButton, BisonContext;
 
-import '../api_service.dart';
-import '../connect.dart';
-import 'launcher_models.dart';
+import '../api_service.dart' show AppInfo;
+import '../connect.dart' show openInNewTab;
+import 'launcher_models.dart' show RowState, RowStateKind;
 
 class StatusText extends StatelessWidget {
   final String text;

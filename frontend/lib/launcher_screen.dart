@@ -1,11 +1,12 @@
-import 'dart:async';
+import 'dart:async' show Future;
 
 import 'package:flutter/material.dart';
 
-import 'package:bison_design_system/bison_design_system.dart';
+import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
 
-import 'launcher/launcher_controller.dart';
-import 'launcher/launcher_widgets.dart';
+import 'launcher/launcher_controller.dart' show LauncherController;
+import 'launcher/launcher_widgets.dart'
+    show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
 
 class LauncherScreen extends StatefulWidget {
   const LauncherScreen({super.key});
@@ -20,7 +21,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
   @override
   void initState() {
     super.initState();
-    unawaited(_controller.refresh(_notify));
+    _controller.refresh(_notify);
   }
 
   @override

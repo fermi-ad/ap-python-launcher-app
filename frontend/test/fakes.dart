@@ -1,7 +1,8 @@
-import 'dart:async';
+import 'dart:async' show Future;
 
-import 'package:frontend/api_service.dart';
-import 'package:frontend/job_store.dart';
+import 'package:frontend/api_service.dart'
+    show ApiException, ApiService, AppInfo, LaunchResponse, LaunchStatus;
+import 'package:frontend/job_store.dart' show JobStore, SavedJob;
 
 class FakeApiService implements ApiService {
   List<AppInfo> apps = const [];

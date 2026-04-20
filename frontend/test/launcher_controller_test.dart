@@ -1,42 +1,49 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:frontend/api_service.dart';
-import 'package:frontend/launcher/launcher_controller.dart';
-import 'package:frontend/launcher/launcher_models.dart';
+import 'package:frontend/api_service.dart' as api;
+import 'package:frontend/launcher/launcher_controller.dart'
+    show LauncherController;
+import 'package:frontend/launcher/launcher_models.dart' as models;
 
-import 'fakes.dart';
+import 'fakes.dart' show FakeApiService, FakeJobStore, NotifyCounter;
 
 void main() {
   group('LauncherController.refresh', () {
     test('loads apps and sets status', () async {
-      final api = FakeApiService()
+      final fakeApi = FakeApiService()
         ..apps = [
-          AppInfo(repo: 'ap-python/foo', tag: 'latest', allTags: const []),
-          AppInfo(repo: 'ap-python/bar', tag: null, allTags: const []),
+          api.AppInfo(repo: 'ap-python/foo', tag: 'latest', allTags: const []),
+          api.AppInfo(repo: 'ap-python/bar', tag: null, allTags: const []),
         ];
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
 
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
       await c.refresh(notify.call);
 
       expect(c.apps.length, 2);
       expect(c.statusText, 'Loaded 2 app(s)');
       expect(notify.count, greaterThan(0));
 
-      expect(c.rowStateFor('ap-python/foo', 'latest').kind, RowStateKind.idle);
-      expect(c.rowStateFor('ap-python/bar', 'latest').kind, RowStateKind.idle);
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
+      expect(
+        c.rowStateFor('ap-python/bar', 'latest').kind,
+        models.RowStateKind.idle,
+      );
     });
 
     test('sets error status and launchJson on failure', () async {
-      final api = FakeApiService();
-      api.launchStatusErrors['__apps__'] = Exception('boom');
+      final fakeApi = FakeApiService();
+      fakeApi.launchStatusErrors['__apps__'] = Exception('boom');
 
       final failingApi = _FailingAppsApiService();
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
 
-      final c = LauncherController(api: failingApi, jobs: jobs);
+      final c = LauncherController(apiService: failingApi, jobStore: jobs);
       await c.refresh(notify.call);
 
       expect(c.statusText, 'Refresh failed');
@@ -46,42 +53,45 @@ void main() {
 
   group('LauncherController.launch', () {
     test('saves job, sets pending row state, and starts polling', () async {
-      final api = FakeApiService()
-        ..launchResponse = LaunchResponse(
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
           launchId: 'id1',
           tag: 'latest',
-          raw: const {'launchId': 'id1', 'tag': 'latest'},
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
         )
-        ..launchStatuses['id1'] = LaunchStatus(
+        ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: LaunchAccess(status: 'Pending', urls: const []),
-          raw: const {
+          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          raw: const <String, dynamic>{
             'status': 'Running',
-            'access': {'status': 'Pending', 'urls': []},
+            'access': <String, dynamic>{
+              'status': 'Pending',
+              'urls': <String>[],
+            },
           },
         );
 
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.launch('ap-python/foo', 'latest', notify.call);
 
       expect(jobs.jobs.single.launchId, 'id1');
       expect(
         c.rowStateFor('ap-python/foo', 'latest').kind,
-        RowStateKind.pending,
+        models.RowStateKind.pending,
       );
 
       c.dispose();
     });
 
     test('sets error status on failure', () async {
-      final api = _FailingLaunchApiService();
+      final failingApi = _FailingLaunchApiService();
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: failingApi, jobStore: jobs);
 
       await c.launch('ap-python/foo', 'latest', notify.call);
 
@@ -92,23 +102,23 @@ void main() {
 
   group('LauncherController.restoreJobs', () {
     test('does nothing when no saved jobs', () async {
-      final api = FakeApiService();
+      final fakeApi = FakeApiService();
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
-      expect(api.getLaunchStatusCalls, isEmpty);
+      expect(fakeApi.getLaunchStatusCalls, isEmpty);
     });
 
     test('removes job when tag no longer matches currentTags', () async {
-      final api = FakeApiService();
+      final fakeApi = FakeApiService();
       final jobs = FakeJobStore();
       await jobs.saveJob('id1', 'ap-python/foo', 'old');
 
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -116,19 +126,19 @@ void main() {
     });
 
     test('sets ready state when access is Ready with urls', () async {
-      final api = FakeApiService()
-        ..launchStatuses['id1'] = LaunchStatus(
+      final fakeApi = FakeApiService()
+        ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: LaunchAccess(
+          access: api.LaunchAccess(
             status: 'Ready',
             urls: const ['http://host:80/'],
           ),
-          raw: const {
+          raw: const <String, dynamic>{
             'status': 'Running',
-            'access': {
+            'access': <String, dynamic>{
               'status': 'Ready',
-              'urls': ['http://host:80/'],
+              'urls': <String>['http://host:80/'],
             },
           },
         );
@@ -137,24 +147,27 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
       final st = c.rowStateFor('ap-python/foo', 'latest');
-      expect(st.kind, RowStateKind.ready);
+      expect(st.kind, models.RowStateKind.ready);
       expect(st.connectUrl, 'http://host:80/');
     });
 
     test('removes Succeeded job on restore', () async {
-      final api = FakeApiService()
-        ..launchStatuses['id1'] = LaunchStatus(
+      final fakeApi = FakeApiService()
+        ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Succeeded',
-          access: LaunchAccess(status: 'Pending', urls: const []),
-          raw: const {
+          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          raw: const <String, dynamic>{
             'status': 'Succeeded',
-            'access': {'status': 'Pending', 'urls': []},
+            'access': <String, dynamic>{
+              'status': 'Pending',
+              'urls': <String>[],
+            },
           },
         );
 
@@ -162,23 +175,26 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
       expect(jobs.jobs, isEmpty);
-      expect(c.rowStateFor('ap-python/foo', 'latest').kind, RowStateKind.idle);
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
     });
 
     test('removes job on fetch error during restore', () async {
-      final api = FakeApiService()
+      final fakeApi = FakeApiService()
         ..launchStatusErrors['id1'] = Exception('gone');
 
       final jobs = FakeJobStore();
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(api: api, jobs: jobs);
+      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -190,24 +206,24 @@ void main() {
     test(
       'transitions to ready and stops polling when url becomes available',
       () async {
-        final api = FakeApiService()
-          ..launchResponse = LaunchResponse(
+        final fakeApi = FakeApiService()
+          ..launchResponse = api.LaunchResponse(
             launchId: 'id1',
             tag: 'latest',
-            raw: const {'launchId': 'id1', 'tag': 'latest'},
+            raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
           )
-          ..launchStatuses['id1'] = LaunchStatus(
+          ..launchStatuses['id1'] = api.LaunchStatus(
             launchId: 'id1',
             status: 'Running',
-            access: LaunchAccess(
+            access: api.LaunchAccess(
               status: 'Ready',
               urls: const ['http://host:80/'],
             ),
-            raw: const {
+            raw: const <String, dynamic>{
               'status': 'Running',
-              'access': {
+              'access': <String, dynamic>{
                 'status': 'Ready',
-                'urls': ['http://host:80/'],
+                'urls': <String>['http://host:80/'],
               },
             },
           );
@@ -215,8 +231,8 @@ void main() {
         final jobs = FakeJobStore();
         final notify = NotifyCounter();
         final c = LauncherController(
-          api: api,
-          jobs: jobs,
+          apiService: fakeApi,
+          jobStore: jobs,
           pollInterval: Duration.zero,
         );
 
@@ -225,7 +241,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         final st = c.rowStateFor('ap-python/foo', 'latest');
-        expect(st.kind, RowStateKind.ready);
+        expect(st.kind, models.RowStateKind.ready);
         expect(st.connectUrl, 'http://host:80/');
 
         c.dispose();
@@ -233,27 +249,30 @@ void main() {
     );
 
     test('removes job and sets idle when status is Succeeded', () async {
-      final api = FakeApiService()
-        ..launchResponse = LaunchResponse(
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
           launchId: 'id1',
           tag: 'latest',
-          raw: const {'launchId': 'id1', 'tag': 'latest'},
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
         )
-        ..launchStatuses['id1'] = LaunchStatus(
+        ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Succeeded',
-          access: LaunchAccess(status: 'Pending', urls: const []),
-          raw: const {
+          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          raw: const <String, dynamic>{
             'status': 'Succeeded',
-            'access': {'status': 'Pending', 'urls': []},
+            'access': <String, dynamic>{
+              'status': 'Pending',
+              'urls': <String>[],
+            },
           },
         );
 
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
       final c = LauncherController(
-        api: api,
-        jobs: jobs,
+        apiService: fakeApi,
+        jobStore: jobs,
         pollInterval: Duration.zero,
       );
 
@@ -262,19 +281,22 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(jobs.jobs, isEmpty);
-      expect(c.rowStateFor('ap-python/foo', 'latest').kind, RowStateKind.idle);
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
 
       c.dispose();
     });
 
     test('removes job and sets idle on 404 ApiException', () async {
-      final api = FakeApiService()
-        ..launchResponse = LaunchResponse(
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
           launchId: 'id1',
           tag: 'latest',
-          raw: const {'launchId': 'id1', 'tag': 'latest'},
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
         )
-        ..launchStatusErrors['id1'] = ApiException(
+        ..launchStatusErrors['id1'] = api.ApiException(
           statusCode: 404,
           statusText: 'Not Found',
           body: '',
@@ -283,8 +305,8 @@ void main() {
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
       final c = LauncherController(
-        api: api,
-        jobs: jobs,
+        apiService: fakeApi,
+        jobStore: jobs,
         pollInterval: Duration.zero,
       );
 
@@ -293,16 +315,19 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(jobs.jobs, isEmpty);
-      expect(c.rowStateFor('ap-python/foo', 'latest').kind, RowStateKind.idle);
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
 
       c.dispose();
     });
   });
 }
 
-class _FailingAppsApiService implements ApiService {
+class _FailingAppsApiService implements api.ApiService {
   @override
-  Future<List<AppInfo>> getApps() async {
+  Future<List<api.AppInfo>> getApps() async {
     throw Exception('boom');
   }
 
@@ -312,27 +337,27 @@ class _FailingAppsApiService implements ApiService {
   }
 
   @override
-  Future<LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<api.LaunchStatus> getLaunchStatus(String launchId) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<LaunchResponse> postLaunch(String repo) async {
+  Future<api.LaunchResponse> postLaunch(String repo) async {
     throw UnimplementedError();
   }
 }
 
-class _FailingLaunchApiService implements ApiService {
+class _FailingLaunchApiService implements api.ApiService {
   @override
-  Future<List<AppInfo>> getApps() async => const [];
+  Future<List<api.AppInfo>> getApps() async => const [];
 
   @override
-  Future<LaunchResponse> postLaunch(String repo) async {
+  Future<api.LaunchResponse> postLaunch(String repo) async {
     throw Exception('boom');
   }
 
   @override
-  Future<LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<api.LaunchStatus> getLaunchStatus(String launchId) async {
     throw UnimplementedError();
   }
 

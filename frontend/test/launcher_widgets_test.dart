@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:bison_design_system/bison_design_system.dart';
+import 'package:bison_design_system/bison_design_system.dart'
+    show BisonThemeData;
 
-import 'package:frontend/api_service.dart';
-import 'package:frontend/launcher/launcher_models.dart';
-import 'package:frontend/launcher/launcher_widgets.dart';
+import 'package:frontend/api_service.dart' as api;
+import 'package:frontend/launcher/launcher_models.dart' as models;
+import 'package:frontend/launcher/launcher_widgets.dart'
+    show AppsTable, StatusText;
 
 void main() {
   group('StatusText', () {
@@ -46,17 +48,21 @@ void main() {
               width: 1000,
               child: AppsTable(
                 apps: [
-                  AppInfo(
+                  api.AppInfo(
                     repo: 'ap-python/foo',
                     tag: 'latest',
                     allTags: const [],
                   ),
-                  AppInfo(repo: 'ap-python/bar', tag: 'v1', allTags: const []),
+                  api.AppInfo(
+                    repo: 'ap-python/bar',
+                    tag: 'v1',
+                    allTags: const [],
+                  ),
                 ],
                 rowStateFor: (repo, tag) =>
-                    const RowState(kind: RowStateKind.idle),
+                    const models.RowState(kind: models.RowStateKind.idle),
                 onLaunch: (repo, tag) async {},
-                onEnd: (repo, tag, launchId) async {},
+                onEnd: (launchId, repo, tag) async {},
               ),
             ),
           ),
@@ -70,9 +76,9 @@ void main() {
     });
 
     testWidgets('shows Connect + End when row is ready', (tester) async {
-      RowState stateFor(String repo, String tag) {
-        return const RowState(
-          kind: RowStateKind.ready,
+      models.RowState stateFor(String repo, String tag) {
+        return const models.RowState(
+          kind: models.RowStateKind.ready,
           launchId: 'id1',
           connectUrl: 'http://host:80/',
         );
@@ -89,7 +95,7 @@ void main() {
                 data: const MediaQueryData(textScaler: TextScaler.linear(0.5)),
                 child: AppsTable(
                   apps: [
-                    AppInfo(
+                    api.AppInfo(
                       repo: 'ap-python/foo',
                       tag: 'latest',
                       allTags: const [],
@@ -97,7 +103,7 @@ void main() {
                   ],
                   rowStateFor: stateFor,
                   onLaunch: (repo, tag) async {},
-                  onEnd: (repo, tag, launchId) async {},
+                  onEnd: (launchId, repo, tag) async {},
                 ),
               ),
             ),
@@ -111,8 +117,11 @@ void main() {
     });
 
     testWidgets('shows End disabled when ending', (tester) async {
-      RowState stateFor(String repo, String tag) {
-        return const RowState(kind: RowStateKind.ending, launchId: 'id1');
+      models.RowState stateFor(String repo, String tag) {
+        return const models.RowState(
+          kind: models.RowStateKind.ending,
+          launchId: 'id1',
+        );
       }
 
       await tester.pumpWidget(
@@ -124,7 +133,7 @@ void main() {
               width: 1000,
               child: AppsTable(
                 apps: [
-                  AppInfo(
+                  api.AppInfo(
                     repo: 'ap-python/foo',
                     tag: 'latest',
                     allTags: const [],
@@ -132,7 +141,7 @@ void main() {
                 ],
                 rowStateFor: stateFor,
                 onLaunch: (repo, tag) async {},
-                onEnd: (repo, tag, launchId) async {},
+                onEnd: (launchId, repo, tag) async {},
               ),
             ),
           ),
@@ -155,16 +164,16 @@ void main() {
               child: SingleChildScrollView(
                 child: AppsTable(
                   apps: [
-                    AppInfo(
+                    api.AppInfo(
                       repo: 'ap-python/foo',
                       tag: 'latest',
                       allTags: const [],
                     ),
                   ],
                   rowStateFor: (repo, tag) =>
-                      const RowState(kind: RowStateKind.idle),
+                      const models.RowState(kind: models.RowStateKind.idle),
                   onLaunch: (repo, tag) async {},
-                  onEnd: (repo, tag, launchId) async {},
+                  onEnd: (launchId, repo, tag) async {},
                 ),
               ),
             ),

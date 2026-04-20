@@ -1,6 +1,7 @@
-import 'dart:convert';
+import 'dart:convert' show jsonDecode, jsonEncode;
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart'
+    show SharedPreferences;
 
 const jobsKey = 'ap_launcher_jobs';
 
@@ -36,8 +37,8 @@ class JobStore {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const [];
       return decoded
-          .whereType<Map>()
-          .map((m) => SavedJob.fromJson(m.cast<String, dynamic>()))
+          .whereType<Map<String, dynamic>>()
+          .map(SavedJob.fromJson)
           .where(
             (j) =>
                 j.launchId.isNotEmpty && j.repo.isNotEmpty && j.tag.isNotEmpty,
