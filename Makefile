@@ -2,7 +2,7 @@ PYTHON  ?= .venv/bin/python
 UVICORN ?= .venv/bin/uvicorn
 IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
-FVM     ?= fvm
+FVM     ?= ./.fvm/flutter_sdk/bin/flutter
 
 .PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend build-mock docker-build docker-run
 
@@ -30,8 +30,9 @@ dev: ## Run the server against a real Harbor/k8s (requires env vars)
 mock: ## Run the server with fakes — no Harbor or k8s needed
 	AP_MOCK_MODE=true $(UVICORN) ap_launcher.server:app --reload --port $(PORT)
 
-lint: ## Run ruff (if available)
+lint: ## Run ruff + flutter analyze
 	$(PYTHON) -m ruff check ap_launcher tests
+	cd frontend && $(FVM) analyze
 
 build-frontend: ## Build Flutter web frontend into ap_launcher/static/
 	cd frontend && $(FVM) flutter pub get
