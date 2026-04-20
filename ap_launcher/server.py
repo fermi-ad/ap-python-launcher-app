@@ -139,7 +139,9 @@ def create_app() -> FastAPI:
             "Static directory not found; skipping static mount: %s", static_dir
         )
 
-        @app.get("/")
+        from fastapi.responses import HTMLResponse
+
+        @app.get("/", response_class=HTMLResponse)
         def root_fallback() -> str:
             return (
                 "<!doctype html>"
