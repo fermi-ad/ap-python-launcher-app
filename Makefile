@@ -2,7 +2,7 @@ PYTHON  ?= .venv/bin/python
 UVICORN ?= .venv/bin/uvicorn
 IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
-FVM     ?= ./.fvm/flutter_sdk/bin/
+FVM     ?= ../.fvm/flutter_sdk/bin/
 
 .PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend build-mock docker-build docker-run
 
@@ -22,23 +22,23 @@ test-backend: ## Run backend (Python) tests only
 	$(PYTHON) -m pytest tests/unit tests/integration
 
 test-cov: ## Run tests with coverage report
-	$(PYTHON) -m pytest --cov=ap_launcher --cov-report=term-missing
+	$(PYTHON) -m pytest --cov=ap_python_launcher --cov-report=term-missing
 
 dev: ## Run the server against a real Harbor/k8s (requires env vars)
-	$(UVICORN) ap_launcher.server:app --reload --port $(PORT)
+	$(UVICORN) ap_python_launcher.server:app --reload --port $(PORT)
 
 mock: ## Run the server with fakes — no Harbor or k8s needed
-	AP_MOCK_MODE=true $(UVICORN) ap_launcher.server:app --reload --port $(PORT)
+	AP_MOCK_MODE=true $(UVICORN) ap_python_launcher.server:app --reload --port $(PORT)
 
 lint: ## Run ruff + flutter analyze
-	$(PYTHON) -m ruff check ap_launcher tests
+	$(PYTHON) -m ruff check ap_python_launcher tests
 	cd frontend && $(FVM)flutter analyze
 
-build-frontend: ## Build Flutter web frontend into ap_launcher/static/
+build-frontend: ## Build Flutter web frontend into ap_python_launcher/static/
 	cd frontend && $(FVM)flutter pub get
 	cd frontend && $(FVM)flutter build web --release
-	rm -rf ap_launcher/static/*
-	cp -r frontend/build/web/. ap_launcher/static/
+	rm -rf src/ap_python_launcher/static/*
+	cp -r frontend/build/web/. src/ap_python_launcher/static/
 
 build-mock: build-frontend mock ## Build frontend then run mock server
 

@@ -13,36 +13,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  backend:
+    name: Backend (Python)
+    uses: fermi-ad/.github/.github/workflows/ap-python-integration.yaml@main
+    with:
+      coverage-exclude: "tests/"
 
-  Test:
+  frontend:
+    name: Frontend (Flutter)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
+      - name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checking out source code
         uses: actions/checkout@v6
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          token: ${{ steps.app-token.outputs.token }}
 
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install backend test dependencies
-        run: uv sync --group dev
-
-      - name: Lint backend
-        run: uv run python3 -m ruff check ap_launcher tests
-
-      - name: Run backend unit tests
-        run: uv run pytest tests/unit/ -v --tb=short
-
-      - name: Run backend integration tests
-        run: uv run pytest tests/integration/ -v --tb=short
-
-      - name: Generate coverage report
-        run: uv run pytest tests/unit/ tests/integration/ --cov=ap_launcher --cov-report=xml
+      - name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

@@ -3,7 +3,7 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 import 'package:shared_preferences/shared_preferences.dart'
     show SharedPreferences;
 
-const jobsKey = 'ap_launcher_jobs';
+const jobsKey = 'ap_python_launcher_jobs';
 
 class SavedJob {
   final String launchId;

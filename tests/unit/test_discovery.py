@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
-from ap_launcher.discovery import HarborClient, HarborRepo
+from ap_python_launcher.discovery import HarborClient, HarborRepo
 
 
 def _make_response(data, status_code=200, raise_http_error=False):

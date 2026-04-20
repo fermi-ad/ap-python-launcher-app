@@ -8,7 +8,7 @@ Each launch creates:
 - a `Job` (and Pod) in the workload namespace, and
 - a per-launch `Service` of type `LoadBalancer` that selects the Pod by `ap-python.fnal.gov/launch-id`.
 
-The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](ap_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
+The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](ap_python_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
 
 The launcher will delete the per-launch Service when the Job finishes (Succeeded/Failed) or when the Pod disappears.
 
@@ -16,14 +16,14 @@ The launcher will delete the per-launch Service when the Job finishes (Succeeded
 
 ```bash
 uv sync
-uv run uvicorn ap_launcher.server:app --reload --port 8080
+uv run uvicorn ap_python_launcher.server:app --reload --port 8080
 ```
 
 Then open: `http://localhost:8080/`
 
 ## Frontend (Flutter web)
 
-The web UI is implemented as a Flutter web app in [`frontend/`](frontend/). The FastAPI server serves the built Flutter assets from [`ap_launcher/static/`](ap_launcher/static/) (this directory is a build artifact).
+The web UI is implemented as a Flutter web app in [`frontend/`](frontend/). The FastAPI server serves the built Flutter assets from [`ap_python_launcher/static/`](ap_python_launcher/static/) (this directory is a build artifact).
 
 ### Build the frontend into the FastAPI static directory
 

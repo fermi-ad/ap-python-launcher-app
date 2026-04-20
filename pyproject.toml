@@ -41,5 +41,5 @@ addopts = "--tb=short -q"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["ap_launcher*"]
+where = ["src"]
+include = ["ap_python_launcher*"]
