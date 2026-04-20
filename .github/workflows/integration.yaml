@@ -44,7 +44,7 @@ jobs:
       - name: Generate coverage report
         run: uv run pytest tests/unit/ tests/integration/ --cov=ap_launcher --cov-report=xml
 
-      - name: Set up Flutter (FVM)
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version-file: frontend/.fvmrc
@@ -52,12 +52,12 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: fvm flutter pub get
+        run: flutter pub get
 
       - name: Lint frontend
         working-directory: frontend
-        run: fvm flutter analyze
+        run: flutter analyze
 
       - name: Run frontend tests
         working-directory: frontend
-        run: fvm flutter test
+        run: flutter test
