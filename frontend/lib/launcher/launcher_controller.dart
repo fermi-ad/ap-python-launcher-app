@@ -9,9 +9,18 @@ class LauncherController {
   final ApiService _api;
   final JobStore _jobs;
 
-  LauncherController({ApiService? api, JobStore? jobs})
-    : _api = api ?? ApiService(),
-      _jobs = jobs ?? JobStore();
+  final Duration pollInterval;
+  final Duration endPollInterval;
+  final Duration endTimeout;
+
+  LauncherController({
+    ApiService? api,
+    JobStore? jobs,
+    this.pollInterval = const Duration(seconds: 2),
+    this.endPollInterval = const Duration(seconds: 2),
+    this.endTimeout = const Duration(seconds: 30),
+  }) : _api = api ?? HttpApiService(),
+       _jobs = jobs ?? JobStore();
 
   List<AppInfo> apps = const [];
   String statusText = 'Ready';
@@ -134,8 +143,8 @@ class LauncherController {
 
     final ended = await _pollUntilEnded(
       launchId,
-      timeout: const Duration(seconds: 30),
-      poll: const Duration(seconds: 2),
+      timeout: endTimeout,
+      poll: endPollInterval,
       onStatus: (st) => _setLaunchJson(st.raw, notify),
     );
 
@@ -221,7 +230,7 @@ class LauncherController {
   ) {
     _stopPolling(launchId);
 
-    _pollers[launchId] = Timer.periodic(const Duration(seconds: 2), (_) async {
+    _pollers[launchId] = Timer.periodic(pollInterval, (_) async {
       final saved = await _jobs.loadJobs();
       if (!saved.any((j) => j.launchId == launchId)) {
         _stopPolling(launchId);

@@ -92,10 +92,17 @@ class LaunchResponse {
   }
 }
 
-class ApiService {
+abstract class ApiService {
+  Future<List<AppInfo>> getApps();
+  Future<LaunchResponse> postLaunch(String repo);
+  Future<LaunchStatus> getLaunchStatus(String launchId);
+  Future<Map<String, dynamic>> deleteLaunch(String launchId);
+}
+
+class HttpApiService implements ApiService {
   final http.Client _client;
 
-  ApiService({http.Client? client}) : _client = client ?? http.Client();
+  HttpApiService({http.Client? client}) : _client = client ?? http.Client();
 
   Future<Map<String, dynamic>> _fetchJson(
     String path, {
@@ -125,6 +132,7 @@ class ApiService {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  @override
   Future<List<AppInfo>> getApps() async {
     final data = await _fetchJson('apps');
     final apps = (data['apps'] as List?) ?? const [];
@@ -134,6 +142,7 @@ class ApiService {
         .toList();
   }
 
+  @override
   Future<LaunchResponse> postLaunch(String repo) async {
     final data = await _fetchJson(
       'launch',
@@ -144,11 +153,13 @@ class ApiService {
     return LaunchResponse.fromJson(data);
   }
 
+  @override
   Future<LaunchStatus> getLaunchStatus(String launchId) async {
     final data = await _fetchJson('launch/$launchId');
     return LaunchStatus.fromJson(data);
   }
 
+  @override
   Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
     return _fetchJson('launch/$launchId', method: 'DELETE');
   }

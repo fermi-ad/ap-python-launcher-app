@@ -5,3 +5,5 @@
 # Rules
 
   - When making code changes, do **not** add comments that only exist to explain context about why the change was made, mention details about an earlier version of the code, or implicitly compare the current state to the previous state.
+  - Use fvm when running Flutter commands
+  - Use python3 when running python commands
