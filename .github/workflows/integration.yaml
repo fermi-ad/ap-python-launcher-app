@@ -31,18 +31,18 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          client-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Checking out source code
         uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
