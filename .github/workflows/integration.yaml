@@ -34,6 +34,17 @@ jobs:
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
+      - name: Debug checkout context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "repo=${GITHUB_REPOSITORY}"
+          echo "event=${GITHUB_EVENT_NAME}"
+          echo "ref=${GITHUB_REF}"
+          echo "sha=${GITHUB_SHA}"
+          echo "actor=${GITHUB_ACTOR}"
+          echo "token_present=${{ steps.app-token.outputs.token != '' }}"
+
       - name: Checking out source code
         uses: actions/checkout@v6
         with:
