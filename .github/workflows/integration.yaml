@@ -18,6 +18,10 @@ jobs:
     name: Backend (Python)
     uses: fermi-ad/.github/.github/workflows/ap-python-integration.yaml@main
     secrets: inherit
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     with:
       coverage-exclude: "tests/"
 
