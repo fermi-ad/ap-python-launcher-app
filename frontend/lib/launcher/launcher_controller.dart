@@ -6,7 +6,17 @@ import 'package:frontend/job_store.dart' as jobs;
 import 'package:frontend/launcher/launcher_models.dart'
     show RowState, RowStateKind;
 
+/// Manages the business logic for the launcher UI.
+///
+/// Handles refreshing the app list, launching and ending jobs, polling for
+/// status updates, and persisting job state across sessions.
 class LauncherController {
+  /// Creates a [LauncherController].
+  ///
+  /// Optional [apiService] and [jobStore] can be injected for testing.
+  /// [pollInterval] controls how often running jobs are polled.
+  /// [endPollInterval] controls how often a terminating job is polled.
+  /// [endTimeout] is the maximum time to wait for a job to terminate.
   LauncherController({
     api.ApiService? apiService,
     jobs.JobStore? jobStore,
@@ -18,12 +28,22 @@ class LauncherController {
   final api.ApiService _api;
   final jobs.JobStore _jobs;
 
+  /// How often active jobs are polled for status updates.
   final Duration pollInterval;
+
+  /// How often a terminating job is polled while waiting for it to end.
   final Duration endPollInterval;
+
+  /// Maximum time to wait for a job to terminate before giving up.
   final Duration endTimeout;
 
+  /// The current list of available apps, updated by [refresh].
   List<api.AppInfo> apps = const [];
+
+  /// A human-readable status message for display in the UI.
   String statusText = 'Ready';
+
+  /// The pretty-printed JSON of the most recent launch status response.
   String launchJson = 'No new launches';
 
   final Map<String, RowState> _rowStates = {};
@@ -31,11 +51,13 @@ class LauncherController {
 
   String _key(String repo, String tag) => '$repo:$tag';
 
+  /// Returns the current [RowState] for the given [repo] and [tag].
   RowState rowStateFor(String repo, String tag) {
     return _rowStates[_key(repo, tag)] ??
         const RowState(kind: RowStateKind.idle);
   }
 
+  /// Cancels all active polling timers and releases resources.
   void dispose() {
     for (final t in _pollers.values) {
       t.cancel();
@@ -63,6 +85,9 @@ class LauncherController {
     notify();
   }
 
+  /// Fetches the app list from the API and restores any persisted jobs.
+  ///
+  /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> refresh(void Function() notify) async {
     _setStatus('Refreshing...', notify);
     try {
@@ -89,6 +114,9 @@ class LauncherController {
     }
   }
 
+  /// Requests a launch for [repo] at [tag] and begins polling for status.
+  ///
+  /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> launch(String repo, String tag, void Function() notify) async {
     _setStatus('Launching $repo...', notify);
     try {
@@ -114,6 +142,9 @@ class LauncherController {
     }
   }
 
+  /// Sends a termination request for [launchId] and waits for the job to end.
+  ///
+  /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> end(
     String launchId,
     String repo,
@@ -160,6 +191,9 @@ class LauncherController {
     _setRowState(repo, tag, const RowState(kind: RowStateKind.idle), notify);
   }
 
+  /// Restores persisted jobs against the given [currentTags] map.
+  ///
+  /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> restoreJobs(
     Map<String, String> currentTags,
     void Function() notify,

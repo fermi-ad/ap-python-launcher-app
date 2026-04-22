@@ -7,7 +7,9 @@ import 'package:frontend/launcher/launcher_controller.dart'
 import 'package:frontend/launcher/launcher_widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
 
+/// The main screen of the AP Python Launcher application.
 class LauncherScreen extends StatefulWidget {
+  /// Creates a [LauncherScreen].
   const LauncherScreen({super.key});
 
   @override

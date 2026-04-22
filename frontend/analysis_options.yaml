@@ -18,8 +18,6 @@ linter:
     prefer_final_in_for_each: true
     parameter_assignments: true  # Replaces prefer_final_parameters.
 
-    public_member_api_docs: false
-
 plugins:
   explicit_imports:
     version: ^1.0.4

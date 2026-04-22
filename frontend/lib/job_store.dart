@@ -3,11 +3,15 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 import 'package:shared_preferences/shared_preferences.dart'
     show SharedPreferences;
 
+/// The [SharedPreferences] key under which saved jobs are stored.
 const jobsKey = 'ap_python_launcher_jobs';
 
+/// A persisted record of a running launch job.
 class SavedJob {
+  /// Creates a [SavedJob] with the given [launchId], [repo], and [tag].
   SavedJob({required this.launchId, required this.repo, required this.tag});
 
+  /// Deserializes a [SavedJob] from a JSON map.
   factory SavedJob.fromJson(Map<String, dynamic> json) {
     return SavedJob(
       launchId: (json['launchId'] as String?) ?? '',
@@ -15,10 +19,17 @@ class SavedJob {
       tag: (json['tag'] as String?) ?? '',
     );
   }
+
+  /// The unique identifier of the launch job.
   final String launchId;
+
+  /// The repository associated with this job.
   final String repo;
+
+  /// The image tag used for this job.
   final String tag;
 
+  /// Serializes this [SavedJob] to a JSON map.
   Map<String, dynamic> toJson() => {
     'launchId': launchId,
     'repo': repo,
@@ -26,7 +37,9 @@ class SavedJob {
   };
 }
 
+/// Persists and retrieves saved launch jobs using [SharedPreferences].
 class JobStore {
+  /// Returns all currently saved jobs, filtering out any malformed entries.
   Future<List<SavedJob>> loadJobs() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(jobsKey);
@@ -48,6 +61,8 @@ class JobStore {
     }
   }
 
+  /// Saves a job identified by [launchId], [repo], and [tag], replacing any
+  /// existing entry for the same [repo]/[tag] pair.
   Future<void> saveJob(String launchId, String repo, String tag) async {
     final prefs = await SharedPreferences.getInstance();
     final jobs =
@@ -61,6 +76,7 @@ class JobStore {
     );
   }
 
+  /// Removes the saved job with the given [launchId].
   Future<void> removeJob(String launchId) async {
     final prefs = await SharedPreferences.getInstance();
     final jobs = (await loadJobs())

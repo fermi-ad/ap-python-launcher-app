@@ -1,3 +1,2 @@
-void openInNewTab(String url) {
-  // No-op on non-web platforms and in tests.
-}
+/// No-op implementation of [openInNewTab] for non-web platforms and tests.
+void openInNewTab(String url) {}

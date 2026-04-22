@@ -1,5 +1,6 @@
-import 'package:web/web.dart' as web;
+import 'package:web/web.dart' show window;
 
+/// Opens [url] in a new browser tab using the web platform.
 void openInNewTab(String url) {
-  web.window.open(url, '_blank');
+  window.open(url, '_blank');
 }

@@ -6,8 +6,12 @@ import 'package:frontend/connect.dart' show openInNewTab;
 import 'package:frontend/launcher/launcher_models.dart'
     show RowState, RowStateKind;
 
+/// Displays a status message, rendering any embedded URL as a tappable link.
 class StatusText extends StatelessWidget {
+  /// Creates a [StatusText] widget with the given [text].
   const StatusText({required this.text, super.key});
+
+  /// The status message to display.
   final String text;
 
   static final RegExp _urlRegex = RegExp(r'https?://\S+');
@@ -58,7 +62,9 @@ class StatusText extends StatelessWidget {
   }
 }
 
+/// Displays the application title and subtitle header.
 class Header extends StatelessWidget {
+  /// Creates a [Header] widget.
   const Header({super.key});
 
   @override
@@ -84,8 +90,12 @@ class Header extends StatelessWidget {
   }
 }
 
+/// A card-style container that wraps its [child] with a border and padding.
 class Panel extends StatelessWidget {
+  /// Creates a [Panel] with the given [child].
   const Panel({required this.child, super.key});
+
+  /// The widget to display inside the panel.
   final Widget child;
 
   @override
@@ -106,7 +116,9 @@ class Panel extends StatelessWidget {
   }
 }
 
+/// Displays a table (or card list on narrow screens) of launchable apps.
 class AppsTable extends StatelessWidget {
+  /// Creates an [AppsTable].
   const AppsTable({
     required this.apps,
     required this.rowStateFor,
@@ -114,9 +126,17 @@ class AppsTable extends StatelessWidget {
     required this.onEnd,
     super.key,
   });
+
+  /// The list of apps to display.
   final List<AppInfo> apps;
+
+  /// Returns the current [RowState] for a given repo and tag.
   final RowState Function(String repo, String tag) rowStateFor;
+
+  /// Called when the user requests a launch for a repo at a given tag.
   final Future<void> Function(String repo, String tag) onLaunch;
+
+  /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
   @override
@@ -301,8 +321,12 @@ class AppsTable extends StatelessWidget {
   }
 }
 
+/// A button that triggers a launch action.
 class LaunchButton extends StatelessWidget {
+  /// Creates a [LaunchButton] with the given [onPressed] callback.
   const LaunchButton({required this.onPressed, super.key});
+
+  /// Called when the button is tapped.
   final VoidCallback onPressed;
 
   @override
@@ -315,8 +339,14 @@ class LaunchButton extends StatelessWidget {
   }
 }
 
+/// A destructive button that triggers an end-job action.
 class EndButton extends StatelessWidget {
+  /// Creates an [EndButton] with the given [onPressed] callback.
+  ///
+  /// Pass `null` for [onPressed] to disable the button.
   const EndButton({required this.onPressed, super.key});
+
+  /// Called when the button is tapped, or `null` to disable the button.
   final VoidCallback? onPressed;
 
   @override
@@ -329,8 +359,12 @@ class EndButton extends StatelessWidget {
   }
 }
 
+/// A button that opens the app's connect [url] in a new browser tab.
 class ConnectButton extends StatelessWidget {
+  /// Creates a [ConnectButton] for the given [url].
   const ConnectButton({required this.url, super.key});
+
+  /// The URL to open when the button is tapped.
   final String url;
 
   @override
@@ -350,8 +384,12 @@ class ConnectButton extends StatelessWidget {
   }
 }
 
+/// Displays a monospace panel showing the raw JSON of the latest launch status.
 class LaunchStatusPanel extends StatelessWidget {
+  /// Creates a [LaunchStatusPanel] with the given [text].
   const LaunchStatusPanel({required this.text, super.key});
+
+  /// The text to display, typically pretty-printed JSON.
   final String text;
 
   @override
