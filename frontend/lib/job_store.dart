@@ -56,7 +56,7 @@ class JobStore {
                 j.launchId.isNotEmpty && j.repo.isNotEmpty && j.tag.isNotEmpty,
           )
           .toList();
-    } on Exception {
+    } on FormatException {
       return const [];
     }
   }
