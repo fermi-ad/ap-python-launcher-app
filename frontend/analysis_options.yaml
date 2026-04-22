@@ -1,7 +1,9 @@
-include: package:flutter_lints/flutter.yaml
-
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+
+include:
+  - package:flutter_lints/flutter.yaml
+  - package:very_good_analysis/analysis_options.yaml
 
 analyzer:
   language:
@@ -11,11 +13,12 @@ analyzer:
 
 linter:
   rules:
-    # The team determined that 'final' should be used wherever relevant (for any variable that does not change after initialization). See PR #2.
+    # The team determined that 'final' should be used wherever relevant (for any variable that does not change after initialization).
     prefer_final_locals: true
     prefer_final_in_for_each: true
-    # Replaces prefer_final_parameters.
-    parameter_assignments: true
+    parameter_assignments: true  # Replaces prefer_final_parameters.
+
+    public_member_api_docs: false
 
 plugins:
   explicit_imports:
