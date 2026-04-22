@@ -1,16 +1,14 @@
-import 'package:flutter/material.dart';
-
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonButton, BisonContext;
-
-import '../api_service.dart' show AppInfo;
-import '../connect.dart' show openInNewTab;
-import 'launcher_models.dart' show RowState, RowStateKind;
+import 'package:flutter/material.dart';
+import 'package:frontend/api_service.dart' show AppInfo;
+import 'package:frontend/connect.dart' show openInNewTab;
+import 'package:frontend/launcher/launcher_models.dart'
+    show RowState, RowStateKind;
 
 class StatusText extends StatelessWidget {
+  const StatusText({required this.text, super.key});
   final String text;
-
-  const StatusText({super.key, required this.text});
 
   static final RegExp _urlRegex = RegExp(r'https?://\S+');
 
@@ -87,9 +85,8 @@ class Header extends StatelessWidget {
 }
 
 class Panel extends StatelessWidget {
+  const Panel({required this.child, super.key});
   final Widget child;
-
-  const Panel({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -110,18 +107,17 @@ class Panel extends StatelessWidget {
 }
 
 class AppsTable extends StatelessWidget {
-  final List<AppInfo> apps;
-  final RowState Function(String repo, String tag) rowStateFor;
-  final Future<void> Function(String repo, String tag) onLaunch;
-  final Future<void> Function(String launchId, String repo, String tag) onEnd;
-
   const AppsTable({
-    super.key,
     required this.apps,
     required this.rowStateFor,
     required this.onLaunch,
     required this.onEnd,
+    super.key,
   });
+  final List<AppInfo> apps;
+  final RowState Function(String repo, String tag) rowStateFor;
+  final Future<void> Function(String repo, String tag) onLaunch;
+  final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +131,7 @@ class AppsTable extends StatelessWidget {
               final tag = a.tag ?? 'latest';
               final state = rowStateFor(a.repo, tag);
               final repoDisplay = a.repo.replaceFirst(
-                RegExp(r'^ap-python/'),
+                RegExp('^ap-python/'),
                 '',
               );
 
@@ -209,17 +205,17 @@ class AppsTable extends StatelessWidget {
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
               columnSpacing: 24,
-              columns: [
-                const DataColumn(
+              columns: const [
+                DataColumn(
                   label: SizedBox(width: 300, child: Text('Repository')),
                 ),
-                const DataColumn(
+                DataColumn(
                   label: SizedBox(width: 120, child: Text('Status')),
                 ),
                 DataColumn(
                   label: SizedBox(
                     width: actionsWidth,
-                    child: const Text('Actions'),
+                    child: Text('Actions'),
                   ),
                 ),
               ],
@@ -227,7 +223,7 @@ class AppsTable extends StatelessWidget {
                 final tag = a.tag ?? 'latest';
                 final state = rowStateFor(a.repo, tag);
                 final repoDisplay = a.repo.replaceFirst(
-                  RegExp(r'^ap-python/'),
+                  RegExp('^ap-python/'),
                   '',
                 );
 
@@ -252,7 +248,6 @@ class AppsTable extends StatelessWidget {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          flex: 1,
                           child: EndButton(
                             onPressed: state.launchId == null
                                 ? null
@@ -307,9 +302,8 @@ class AppsTable extends StatelessWidget {
 }
 
 class LaunchButton extends StatelessWidget {
+  const LaunchButton({required this.onPressed, super.key});
   final VoidCallback onPressed;
-
-  const LaunchButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -322,9 +316,8 @@ class LaunchButton extends StatelessWidget {
 }
 
 class EndButton extends StatelessWidget {
+  const EndButton({required this.onPressed, super.key});
   final VoidCallback? onPressed;
-
-  const EndButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -337,9 +330,8 @@ class EndButton extends StatelessWidget {
 }
 
 class ConnectButton extends StatelessWidget {
+  const ConnectButton({required this.url, super.key});
   final String url;
-
-  const ConnectButton({super.key, required this.url});
 
   @override
   Widget build(BuildContext context) {
@@ -359,9 +351,8 @@ class ConnectButton extends StatelessWidget {
 }
 
 class LaunchStatusPanel extends StatelessWidget {
+  const LaunchStatusPanel({required this.text, super.key});
   final String text;
-
-  const LaunchStatusPanel({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {

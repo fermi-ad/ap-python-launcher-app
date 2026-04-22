@@ -1,11 +1,10 @@
 enum RowStateKind { idle, pending, running, ready, ending }
 
 class RowState {
+  const RowState({required this.kind, this.launchId, this.connectUrl});
   final RowStateKind kind;
   final String? launchId;
   final String? connectUrl;
-
-  const RowState({required this.kind, this.launchId, this.connectUrl});
 
   RowState copyWith({
     RowStateKind? kind,

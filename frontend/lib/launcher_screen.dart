@@ -1,11 +1,10 @@
 import 'dart:async' show Future;
 
-import 'package:flutter/material.dart';
-
 import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
-
-import 'launcher/launcher_controller.dart' show LauncherController;
-import 'launcher/launcher_widgets.dart'
+import 'package:flutter/material.dart';
+import 'package:frontend/launcher/launcher_controller.dart'
+    show LauncherController;
+import 'package:frontend/launcher/launcher_widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
 
 class LauncherScreen extends StatefulWidget {

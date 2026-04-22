@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/main.dart' show ApPythonLauncherApp;
 
 void main() {
-  testWidgets('App builds', (WidgetTester tester) async {
+  testWidgets('App builds', (tester) async {
     await tester.pumpWidget(const ApPythonLauncherApp());
     expect(find.text('AP Python Launcher'), findsOneWidget);
   });

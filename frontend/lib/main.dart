@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
-
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonThemeData;
-
-import 'launcher_screen.dart' show LauncherScreen;
+import 'package:flutter/material.dart';
+import 'package:frontend/launcher_screen.dart' show LauncherScreen;
 
 void main() {
   runApp(const ApPythonLauncherApp());

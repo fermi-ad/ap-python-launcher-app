@@ -6,17 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart'
 const jobsKey = 'ap_python_launcher_jobs';
 
 class SavedJob {
-  final String launchId;
-  final String repo;
-  final String tag;
-
   SavedJob({required this.launchId, required this.repo, required this.tag});
-
-  Map<String, dynamic> toJson() => {
-    'launchId': launchId,
-    'repo': repo,
-    'tag': tag,
-  };
 
   factory SavedJob.fromJson(Map<String, dynamic> json) {
     return SavedJob(
@@ -25,6 +15,15 @@ class SavedJob {
       tag: (json['tag'] as String?) ?? '',
     );
   }
+  final String launchId;
+  final String repo;
+  final String tag;
+
+  Map<String, dynamic> toJson() => {
+    'launchId': launchId,
+    'repo': repo,
+    'tag': tag,
+  };
 }
 
 class JobStore {

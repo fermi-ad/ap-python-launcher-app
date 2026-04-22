@@ -1,18 +1,12 @@
 import 'dart:async' show Future, Timer;
 import 'dart:convert' show JsonEncoder;
 
-import '../api_service.dart' as api;
-import '../job_store.dart' as jobs;
-import 'launcher_models.dart' show RowState, RowStateKind;
+import 'package:frontend/api_service.dart' as api;
+import 'package:frontend/job_store.dart' as jobs;
+import 'package:frontend/launcher/launcher_models.dart'
+    show RowState, RowStateKind;
 
 class LauncherController {
-  final api.ApiService _api;
-  final jobs.JobStore _jobs;
-
-  final Duration pollInterval;
-  final Duration endPollInterval;
-  final Duration endTimeout;
-
   LauncherController({
     api.ApiService? apiService,
     jobs.JobStore? jobStore,
@@ -21,6 +15,12 @@ class LauncherController {
     this.endTimeout = const Duration(seconds: 30),
   }) : _api = apiService ?? api.HttpApiService(),
        _jobs = jobStore ?? jobs.JobStore();
+  final api.ApiService _api;
+  final jobs.JobStore _jobs;
+
+  final Duration pollInterval;
+  final Duration endPollInterval;
+  final Duration endTimeout;
 
   List<api.AppInfo> apps = const [];
   String statusText = 'Ready';

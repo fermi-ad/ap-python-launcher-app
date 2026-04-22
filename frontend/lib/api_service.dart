@@ -3,25 +3,20 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 import 'package:http/http.dart' show Client, Request, Response;
 
 class ApiException implements Exception {
-  final int statusCode;
-  final String statusText;
-  final String body;
-
   ApiException({
     required this.statusCode,
     required this.statusText,
     required this.body,
   });
+  final int statusCode;
+  final String statusText;
+  final String body;
 
   @override
   String toString() => '$statusCode $statusText: $body';
 }
 
 class AppInfo {
-  final String repo;
-  final String? tag;
-  final List<String> allTags;
-
   AppInfo({required this.repo, required this.tag, required this.allTags});
 
   factory AppInfo.fromJson(Map<String, dynamic> json) {
@@ -32,12 +27,12 @@ class AppInfo {
           (json['allTags'] as List?)?.whereType<String>().toList() ?? const [],
     );
   }
+  final String repo;
+  final String? tag;
+  final List<String> allTags;
 }
 
 class LaunchAccess {
-  final String status;
-  final List<String> urls;
-
   LaunchAccess({required this.status, required this.urls});
 
   factory LaunchAccess.fromJson(Map<String, dynamic>? json) {
@@ -47,14 +42,11 @@ class LaunchAccess {
       urls: (m['urls'] as List?)?.whereType<String>().toList() ?? const [],
     );
   }
+  final String status;
+  final List<String> urls;
 }
 
 class LaunchStatus {
-  final String launchId;
-  final String status;
-  final LaunchAccess access;
-  final Map<String, dynamic> raw;
-
   LaunchStatus({
     required this.launchId,
     required this.status,
@@ -70,13 +62,13 @@ class LaunchStatus {
       raw: json,
     );
   }
+  final String launchId;
+  final String status;
+  final LaunchAccess access;
+  final Map<String, dynamic> raw;
 }
 
 class LaunchResponse {
-  final String launchId;
-  final String? tag;
-  final Map<String, dynamic> raw;
-
   LaunchResponse({
     required this.launchId,
     required this.tag,
@@ -90,6 +82,9 @@ class LaunchResponse {
       raw: json,
     );
   }
+  final String launchId;
+  final String? tag;
+  final Map<String, dynamic> raw;
 }
 
 abstract class ApiService {
@@ -100,9 +95,8 @@ abstract class ApiService {
 }
 
 class HttpApiService implements ApiService {
-  final Client _client;
-
   HttpApiService({Client? client}) : _client = client ?? Client();
+  final Client _client;
 
   Future<Map<String, dynamic>> _fetchJson(
     String path, {
