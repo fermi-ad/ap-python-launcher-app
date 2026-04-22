@@ -83,7 +83,7 @@ class LauncherController {
       await _restoreJobs(currentTags, notify);
 
       _setStatus('Loaded ${loaded.length} app(s)', notify);
-    } catch (e) {
+    } on Exception catch (e) {
       _setStatus('Refresh failed', notify);
       _setLaunchJson({'error': e.toString()}, notify);
     }
@@ -108,7 +108,7 @@ class LauncherController {
         notify,
       );
       _startPolling(launchId, repo, resolvedTag, notify);
-    } catch (e) {
+    } on Exception catch (e) {
       _setLaunchJson({'error': e.toString()}, notify);
       _setStatus('Launch failed', notify);
     }
@@ -130,7 +130,7 @@ class LauncherController {
 
     try {
       await _api.deleteLaunch(launchId);
-    } catch (e) {
+    } on Exception catch (e) {
       _setStatus('Failed to end job: $e', notify);
       _setRowState(
         repo,
@@ -183,7 +183,7 @@ class LauncherController {
       api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(job.launchId);
-      } catch (_) {
+      } on Exception {
         await _jobs.removeJob(job.launchId);
         continue;
       }
@@ -240,7 +240,7 @@ class LauncherController {
       api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(launchId);
-      } catch (e) {
+      } on Exception catch (e) {
         if (e is api.ApiException && e.statusCode == 404) {
           await _jobs.removeJob(launchId);
           _setRowState(
@@ -353,7 +353,7 @@ class LauncherController {
             st.status == 'Failed') {
           return true;
         }
-      } catch (_) {
+      } on Exception {
         return true;
       }
 

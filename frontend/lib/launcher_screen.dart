@@ -1,4 +1,4 @@
-import 'dart:async' show Future;
+import 'dart:async' show Future, unawaited;
 
 import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
 import 'package:flutter/material.dart';
@@ -20,7 +20,7 @@ class _LauncherScreenState extends State<LauncherScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.refresh(_notify);
+    unawaited(_controller.refresh(_notify));
   }
 
   @override

@@ -43,18 +43,18 @@ class JobStore {
                 j.launchId.isNotEmpty && j.repo.isNotEmpty && j.tag.isNotEmpty,
           )
           .toList();
-    } catch (_) {
+    } on Exception {
       return const [];
     }
   }
 
   Future<void> saveJob(String launchId, String repo, String tag) async {
     final prefs = await SharedPreferences.getInstance();
-    final jobs = (await loadJobs())
-        .where((j) => !(j.repo == repo && j.tag == tag))
-        .toList();
-
-    jobs.add(SavedJob(launchId: launchId, repo: repo, tag: tag));
+    final jobs =
+        (await loadJobs())
+            .where((j) => !(j.repo == repo && j.tag == tag))
+            .toList()
+          ..add(SavedJob(launchId: launchId, repo: repo, tag: tag));
     await prefs.setString(
       jobsKey,
       jsonEncode(jobs.map((j) => j.toJson()).toList()),

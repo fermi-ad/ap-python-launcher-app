@@ -64,8 +64,9 @@ class FakeJobStore implements JobStore {
 
   @override
   Future<void> saveJob(String launchId, String repo, String tag) async {
-    _jobs.removeWhere((j) => j.repo == repo && j.tag == tag);
-    _jobs.add(SavedJob(launchId: launchId, repo: repo, tag: tag));
+    _jobs
+      ..removeWhere((j) => j.repo == repo && j.tag == tag)
+      ..add(SavedJob(launchId: launchId, repo: repo, tag: tag));
   }
 
   @override
