@@ -313,7 +313,7 @@ def test_non_prefixed_path_unchanged(client):
     assert resp.status_code == 200
 
 
-def test_bare_prefix_becomes_root(client):
-    resp = client.get("/ap-python")
-    assert resp.status_code == 200
-    assert "text/html" in resp.headers["content-type"]
+def test_bare_prefix_redirects_to_trailing_slash(client):
+    resp = client.get("/ap-python", follow_redirects=False)
+    assert resp.status_code == 301
+    assert resp.headers["location"] == "/ap-python/"
