@@ -14,18 +14,18 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
 
 # System deps
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
 # Install uv (fast Python package installer)
-RUN python -m pip install --upgrade pip \
-  && python -m pip install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Copy everything setuptools needs to resolve the src layout
 COPY pyproject.toml /app/pyproject.toml
