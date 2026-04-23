@@ -159,7 +159,7 @@ class HttpApiService implements ApiService {
   ///
   /// An optional HTTP [client] can be injected for testing.
   HttpApiService({String baseUrl = '', Client? client})
-    : _baseUri = Uri.parse(baseUrl.isEmpty ? '/' : baseUrl),
+    : _baseUri = Uri.parse(baseUrl.isEmpty ? '' : baseUrl),
       _client = client ?? Client();
 
   final Uri _baseUri;
