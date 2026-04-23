@@ -30,7 +30,7 @@ class AppInfo {
   /// Creates an [AppInfo] with the given [repo], [tag], and [allTags].
   AppInfo({required this.repo, required this.tag, required this.allTags});
 
-  /// Deserialises an [AppInfo] from a JSON map.
+  /// Deserializes an [AppInfo] from a JSON map.
   factory AppInfo.fromJson(Map<String, dynamic> json) {
     return AppInfo(
       repo: (json['repo'] as String?) ?? '',
@@ -55,7 +55,7 @@ class LaunchAccess {
   /// Creates a [LaunchAccess] with the given [status] and [urls].
   LaunchAccess({required this.status, required this.urls});
 
-  /// Deserialises a [LaunchAccess] from a nullable JSON map.
+  /// Deserializes a [LaunchAccess] from a nullable JSON map.
   factory LaunchAccess.fromJson(Map<String, dynamic>? json) {
     final m = json ?? const <String, dynamic>{};
     return LaunchAccess(
@@ -81,7 +81,7 @@ class LaunchStatus {
     required this.raw,
   });
 
-  /// Deserialises a [LaunchStatus] from a JSON map.
+  /// Deserializes a [LaunchStatus] from a JSON map.
   factory LaunchStatus.fromJson(Map<String, dynamic> json) {
     return LaunchStatus(
       launchId: (json['launchId'] as String?) ?? '',
@@ -113,7 +113,7 @@ class LaunchResponse {
     required this.raw,
   });
 
-  /// Deserialises a [LaunchResponse] from a JSON map.
+  /// Deserializes a [LaunchResponse] from a JSON map.
   factory LaunchResponse.fromJson(Map<String, dynamic> json) {
     return LaunchResponse(
       launchId: (json['launchId'] as String?) ?? '',
@@ -149,8 +149,20 @@ abstract class ApiService {
 
 /// HTTP implementation of [ApiService] that communicates with the backend.
 class HttpApiService implements ApiService {
-  /// Creates an [HttpApiService], optionally injecting an HTTP [client].
-  HttpApiService({Client? client}) : _client = client ?? Client();
+  /// Creates an [HttpApiService].
+  ///
+  /// [baseUrl] is the absolute base URL of the API server (e.g.
+  /// `'http://localhost:8080'`). All API paths are resolved relative to it.
+  /// Defaults to an empty string, which resolves paths relative to the current
+  /// document origin — suitable when the Flutter app is served directly from
+  /// the FastAPI server at `/`.
+  ///
+  /// An optional HTTP [client] can be injected for testing.
+  HttpApiService({String baseUrl = '', Client? client})
+    : _baseUri = Uri.parse(baseUrl.isEmpty ? '/' : baseUrl),
+      _client = client ?? Client();
+
+  final Uri _baseUri;
   final Client _client;
 
   Future<Map<String, dynamic>> _fetchJson(
@@ -159,7 +171,7 @@ class HttpApiService implements ApiService {
     Map<String, String>? headers,
     Object? body,
   }) async {
-    final uri = Uri.parse(path);
+    final uri = _baseUri.resolve(path);
 
     final req = Request(method, uri);
     if (headers != null) req.headers.addAll(headers);

@@ -23,7 +23,7 @@ Then open: `http://localhost:8080/`
 
 ## Frontend (Flutter web)
 
-The web UI is implemented as a Flutter web app in [`frontend/`](frontend/). The FastAPI server serves the built Flutter assets from [`ap_python_launcher/static/`](ap_python_launcher/static/) (this directory is a build artifact).
+The web UI is implemented as a Flutter web app in [`frontend/`](frontend/). The FastAPI server serves the built Flutter assets from [`src/ap_python_launcher/static/`](src/ap_python_launcher/static/) (this directory is a build artifact).
 
 ### Build the frontend into the FastAPI static directory
 

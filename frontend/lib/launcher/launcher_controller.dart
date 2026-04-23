@@ -1,10 +1,144 @@
-import 'dart:async' show Future, Timer;
+import 'dart:async' show Future, unawaited;
 import 'dart:convert' show JsonEncoder;
 
 import 'package:frontend/api_service.dart' as api;
 import 'package:frontend/job_store.dart' as jobs;
 import 'package:frontend/launcher/launcher_models.dart'
     show RowState, RowStateKind;
+
+/// Manages a single active poll loop for one launch job.
+///
+/// The loop runs until [stop] is called or the job reaches a terminal state.
+/// Each iteration awaits the network call before scheduling the next.
+class PollSession {
+  PollSession._({
+    required String launchId,
+    required Duration interval,
+    required api.ApiService apiService,
+    required jobs.JobStore jobStore,
+    required void Function(RowState) onRowState,
+    required void Function(String) onStatus,
+    required void Function(Object) onJson,
+  }) : _launchId = launchId,
+       _interval = interval,
+       _api = apiService,
+       _jobs = jobStore,
+       _onRowState = onRowState,
+       _onStatus = onStatus,
+       _onJson = onJson;
+
+  /// Creates a [PollSession] and immediately starts the poll loop.
+  factory PollSession.start({
+    required String launchId,
+    required Duration interval,
+    required api.ApiService apiService,
+    required jobs.JobStore jobStore,
+    required void Function(RowState) onRowState,
+    required void Function(String) onStatus,
+    required void Function(Object) onJson,
+  }) {
+    final session = PollSession._(
+      launchId: launchId,
+      interval: interval,
+      apiService: apiService,
+      jobStore: jobStore,
+      onRowState: onRowState,
+      onStatus: onStatus,
+      onJson: onJson,
+    );
+    unawaited(session._run());
+    return session;
+  }
+
+  final String _launchId;
+  final Duration _interval;
+  final api.ApiService _api;
+  final jobs.JobStore _jobs;
+  final void Function(RowState) _onRowState;
+  final void Function(String) _onStatus;
+  final void Function(Object) _onJson;
+
+  bool _stopped = false;
+
+  /// Stops the poll loop. Any in-flight network call completes but its result
+  /// is discarded.
+  void stop() {
+    _stopped = true;
+  }
+
+  Future<void> _run() async {
+    while (!_stopped) {
+      await Future<void>.delayed(_interval);
+      if (_stopped) return;
+      await _tick();
+    }
+  }
+
+  Future<void> _tick() async {
+    api.LaunchStatus st;
+    try {
+      st = await _api.getLaunchStatus(_launchId);
+    } on Exception catch (e) {
+      if (_stopped) return;
+      if (e is api.ApiException && e.statusCode == 404) {
+        await _jobs.removeJob(_launchId);
+        _onRowState(const RowState(kind: RowStateKind.idle));
+      } else {
+        await _jobs.removeJob(_launchId);
+        _onStatus('Job no longer found; cleared from saved jobs');
+        _onRowState(const RowState(kind: RowStateKind.idle));
+      }
+      stop();
+      return;
+    }
+
+    if (_stopped) return;
+
+    if (st.status == 'NotFound') {
+      await _jobs.removeJob(_launchId);
+      _onRowState(const RowState(kind: RowStateKind.idle));
+      stop();
+      return;
+    }
+
+    _onJson(st.raw);
+
+    final urls = st.access.urls;
+    final accessStatus = st.access.status;
+
+    if (urls.isNotEmpty && accessStatus == 'Ready') {
+      _onStatus('App is reachable: ${urls.join(", ")}');
+      _onRowState(
+        RowState(
+          kind: RowStateKind.ready,
+          launchId: _launchId,
+          connectUrl: urls.first,
+        ),
+      );
+      stop();
+      return;
+    }
+
+    if (st.status == 'Succeeded' || st.status == 'Failed') {
+      _onStatus('Job ${st.status}; access cleaned up');
+      await _jobs.removeJob(_launchId);
+      _onRowState(const RowState(kind: RowStateKind.idle));
+      stop();
+      return;
+    }
+
+    final isPending =
+        st.status.toLowerCase() == 'pending' ||
+        st.access.status.toLowerCase() == 'pending';
+    _onRowState(
+      RowState(
+        kind: isPending ? RowStateKind.pending : RowStateKind.running,
+        launchId: _launchId,
+      ),
+    );
+    _onStatus('Waiting for LoadBalancer...');
+  }
+}
 
 /// Manages the business logic for the launcher UI.
 ///
@@ -47,7 +181,7 @@ class LauncherController {
   String launchJson = 'No new launches';
 
   final Map<String, RowState> _rowStates = {};
-  final Map<String, Timer> _pollers = {};
+  final Map<String, PollSession> _sessions = {};
 
   String _key(String repo, String tag) => '$repo:$tag';
 
@@ -57,12 +191,12 @@ class LauncherController {
         const RowState(kind: RowStateKind.idle);
   }
 
-  /// Cancels all active polling timers and releases resources.
+  /// Stops all active poll sessions and releases resources.
   void dispose() {
-    for (final t in _pollers.values) {
-      t.cancel();
+    for (final s in _sessions.values) {
+      s.stop();
     }
-    _pollers.clear();
+    _sessions.clear();
   }
 
   void _setStatus(String text, void Function() notify) {
@@ -135,7 +269,7 @@ class LauncherController {
         RowState(kind: RowStateKind.pending, launchId: launchId),
         notify,
       );
-      _startPolling(launchId, repo, resolvedTag, notify);
+      _startSession(launchId, repo, resolvedTag, notify);
     } on Exception catch (e) {
       _setLaunchJson({'error': e.toString()}, notify);
       _setStatus('Launch failed', notify);
@@ -180,15 +314,20 @@ class LauncherController {
     );
 
     await _jobs.removeJob(launchId);
-    _stopPolling(launchId);
+    _stopSession(launchId);
 
     if (ended) {
       _setStatus('Job ended', notify);
+      _setRowState(repo, tag, const RowState(kind: RowStateKind.idle), notify);
     } else {
       _setStatus('End requested; still terminating...', notify);
+      _setRowState(
+        repo,
+        tag,
+        RowState(kind: RowStateKind.ending, launchId: launchId),
+        notify,
+      );
     }
-
-    _setRowState(repo, tag, const RowState(kind: RowStateKind.idle), notify);
   }
 
   /// Restores persisted jobs against the given [currentTags] map.
@@ -251,123 +390,32 @@ class LauncherController {
           RowState(kind: RowStateKind.running, launchId: job.launchId),
           notify,
         );
-        _startPolling(job.launchId, job.repo, job.tag, notify);
+        _startSession(job.launchId, job.repo, job.tag, notify);
       }
     }
   }
 
-  void _startPolling(
+  void _startSession(
     String launchId,
     String repo,
     String tag,
     void Function() notify,
   ) {
-    _stopPolling(launchId);
+    _stopSession(launchId);
 
-    _pollers[launchId] = Timer.periodic(pollInterval, (_) async {
-      final saved = await _jobs.loadJobs();
-      if (!saved.any((j) => j.launchId == launchId)) {
-        _stopPolling(launchId);
-        return;
-      }
-
-      api.LaunchStatus st;
-      try {
-        st = await _api.getLaunchStatus(launchId);
-      } on Exception catch (e) {
-        if (e is api.ApiException && e.statusCode == 404) {
-          await _jobs.removeJob(launchId);
-          _setRowState(
-            repo,
-            tag,
-            const RowState(kind: RowStateKind.idle),
-            notify,
-          );
-          _stopPolling(launchId);
-          return;
-        }
-
-        await _jobs.removeJob(launchId);
-        _setStatus('Job no longer found; cleared from saved jobs', notify);
-        _setRowState(
-          repo,
-          tag,
-          const RowState(kind: RowStateKind.idle),
-          notify,
-        );
-        _stopPolling(launchId);
-        return;
-      }
-
-      if (st.status == 'NotFound') {
-        await _jobs.removeJob(launchId);
-        _setRowState(
-          repo,
-          tag,
-          const RowState(kind: RowStateKind.idle),
-          notify,
-        );
-        _stopPolling(launchId);
-        return;
-      }
-
-      _setLaunchJson(st.raw, notify);
-
-      final urls = st.access.urls;
-      final accessStatus = st.access.status;
-
-      if (urls.isNotEmpty && accessStatus == 'Ready') {
-        _setStatus('App is reachable: ${urls.join(", ")}', notify);
-        _setRowState(
-          repo,
-          tag,
-          RowState(
-            kind: RowStateKind.ready,
-            launchId: launchId,
-            connectUrl: urls.first,
-          ),
-          notify,
-        );
-        _stopPolling(launchId);
-        return;
-      }
-
-      if (st.status == 'Succeeded' || st.status == 'Failed') {
-        _setStatus('Job ${st.status}; access cleaned up', notify);
-        await _jobs.removeJob(launchId);
-        _setRowState(
-          repo,
-          tag,
-          const RowState(kind: RowStateKind.idle),
-          notify,
-        );
-        _stopPolling(launchId);
-        return;
-      }
-
-      final pending = _isPendingStatus(st);
-      _setRowState(
-        repo,
-        tag,
-        RowState(
-          kind: pending ? RowStateKind.pending : RowStateKind.running,
-          launchId: launchId,
-        ),
-        notify,
-      );
-
-      _setStatus('Waiting for LoadBalancer...', notify);
-    });
+    _sessions[launchId] = PollSession.start(
+      launchId: launchId,
+      interval: pollInterval,
+      apiService: _api,
+      jobStore: _jobs,
+      onRowState: (state) => _setRowState(repo, tag, state, notify),
+      onStatus: (text) => _setStatus(text, notify),
+      onJson: (obj) => _setLaunchJson(obj, notify),
+    );
   }
 
-  void _stopPolling(String launchId) {
-    _pollers.remove(launchId)?.cancel();
-  }
-
-  bool _isPendingStatus(api.LaunchStatus st) {
-    final status = st.status.toLowerCase();
-    final accessStatus = st.access.status.toLowerCase();
-    return status == 'pending' || accessStatus == 'pending';
+  void _stopSession(String launchId) {
+    _sessions.remove(launchId)?.stop();
   }
 
   Future<bool> _pollUntilEnded(
