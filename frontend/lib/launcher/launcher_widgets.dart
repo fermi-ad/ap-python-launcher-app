@@ -139,6 +139,55 @@ class AppsTable extends StatelessWidget {
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
+  static String _statusText(RowState state) => switch (state.kind) {
+    RowStateKind.idle => '—',
+    RowStateKind.pending => 'Pending',
+    RowStateKind.running => 'Running',
+    RowStateKind.ready => 'Ready',
+    RowStateKind.ending => 'Ending...',
+  };
+
+  Widget _buildAction(
+    RowState state,
+    String repo,
+    String tag, {
+    double? width,
+  }) {
+    final endButton = EndButton(
+      onPressed: (state.kind == RowStateKind.ending || state.launchId == null)
+          ? null
+          : () => onEnd(state.launchId!, repo, tag),
+    );
+
+    Widget inner;
+    if (state.kind == RowStateKind.ready && state.connectUrl != null) {
+      inner = width != null
+          ? Row(
+              children: [
+                Expanded(flex: 2, child: ConnectButton(url: state.connectUrl!)),
+                const SizedBox(width: 16),
+                Expanded(child: endButton),
+              ],
+            )
+          : Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                ConnectButton(url: state.connectUrl!),
+                endButton,
+              ],
+            );
+    } else if (state.kind == RowStateKind.pending ||
+        state.kind == RowStateKind.running ||
+        state.kind == RowStateKind.ending) {
+      inner = endButton;
+    } else {
+      inner = LaunchButton(onPressed: () => onLaunch(repo, tag));
+    }
+
+    return width != null ? SizedBox(width: width, child: inner) : inner;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -155,43 +204,6 @@ class AppsTable extends StatelessWidget {
                 '',
               );
 
-              final statusText = switch (state.kind) {
-                RowStateKind.idle => '—',
-                RowStateKind.pending => 'Pending',
-                RowStateKind.running => 'Running',
-                RowStateKind.ready => 'Ready',
-                RowStateKind.ending => 'Ending...',
-              };
-
-              Widget action;
-              if (state.kind == RowStateKind.ready &&
-                  state.connectUrl != null) {
-                action = Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    ConnectButton(url: state.connectUrl!),
-                    EndButton(
-                      onPressed: state.launchId == null
-                          ? null
-                          : () => onEnd(state.launchId!, a.repo, tag),
-                    ),
-                  ],
-                );
-              } else if (state.kind == RowStateKind.pending ||
-                  state.kind == RowStateKind.running ||
-                  state.kind == RowStateKind.ending) {
-                action = EndButton(
-                  onPressed:
-                      (state.kind == RowStateKind.ending ||
-                          state.launchId == null)
-                      ? null
-                      : () => onEnd(state.launchId!, a.repo, tag),
-                );
-              } else {
-                action = LaunchButton(onPressed: () => onLaunch(a.repo, tag));
-              }
-
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Column(
@@ -204,11 +216,14 @@ class AppsTable extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Status: $statusText',
+                      'Status: ${_statusText(state)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 8),
-                    Align(alignment: Alignment.centerLeft, child: action),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildAction(state, a.repo, tag),
+                    ),
                     const Divider(height: 24),
                   ],
                 ),
@@ -229,14 +244,9 @@ class AppsTable extends StatelessWidget {
                 DataColumn(
                   label: SizedBox(width: 300, child: Text('Repository')),
                 ),
+                DataColumn(label: SizedBox(width: 120, child: Text('Status'))),
                 DataColumn(
-                  label: SizedBox(width: 120, child: Text('Status')),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: actionsWidth,
-                    child: Text('Actions'),
-                  ),
+                  label: SizedBox(width: actionsWidth, child: Text('Actions')),
                 ),
               ],
               rows: apps.map((a) {
@@ -246,56 +256,6 @@ class AppsTable extends StatelessWidget {
                   RegExp('^ap-python/'),
                   '',
                 );
-
-                final statusText = switch (state.kind) {
-                  RowStateKind.idle => '—',
-                  RowStateKind.pending => 'Pending',
-                  RowStateKind.running => 'Running',
-                  RowStateKind.ready => 'Ready',
-                  RowStateKind.ending => 'Ending...',
-                };
-
-                Widget action;
-                if (state.kind == RowStateKind.ready &&
-                    state.connectUrl != null) {
-                  action = SizedBox(
-                    width: actionsWidth,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: ConnectButton(url: state.connectUrl!),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: EndButton(
-                            onPressed: state.launchId == null
-                                ? null
-                                : () => onEnd(state.launchId!, a.repo, tag),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else if (state.kind == RowStateKind.pending ||
-                    state.kind == RowStateKind.running ||
-                    state.kind == RowStateKind.ending) {
-                  action = SizedBox(
-                    width: actionsWidth,
-                    child: EndButton(
-                      onPressed:
-                          (state.kind == RowStateKind.ending ||
-                              state.launchId == null)
-                          ? null
-                          : () => onEnd(state.launchId!, a.repo, tag),
-                    ),
-                  );
-                } else {
-                  action = SizedBox(
-                    width: actionsWidth,
-                    child: LaunchButton(onPressed: () => onLaunch(a.repo, tag)),
-                  );
-                }
 
                 return DataRow(
                   cells: [
@@ -308,8 +268,12 @@ class AppsTable extends StatelessWidget {
                         ),
                       ),
                     ),
-                    DataCell(SizedBox(width: 120, child: Text(statusText))),
-                    DataCell(SizedBox(width: actionsWidth, child: action)),
+                    DataCell(
+                      SizedBox(width: 120, child: Text(_statusText(state))),
+                    ),
+                    DataCell(
+                      _buildAction(state, a.repo, tag, width: actionsWidth),
+                    ),
                   ],
                 );
               }).toList(),
