@@ -67,3 +67,30 @@ jobs:
       - name: Run frontend tests
         working-directory: frontend
         run: flutter test
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checking out source code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Build Docker image
+        run: docker build -t ap-python-launcher:ci .
