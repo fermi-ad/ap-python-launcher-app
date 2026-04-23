@@ -136,11 +136,7 @@ class PollSession {
         launchId: _launchId,
       ),
     );
-    _onStatus(
-      urls.isNotEmpty
-          ? 'Waiting for container...'
-          : 'Waiting for LoadBalancer...',
-    );
+    _onStatus('Waiting for container...');
   }
 }
 
