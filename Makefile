@@ -36,7 +36,7 @@ lint: ## Run ruff + flutter analyze
 
 build-frontend: ## Build Flutter web frontend into ap_python_launcher/static/
 	cd frontend && $(FVM)flutter pub get
-	cd frontend && $(FVM)flutter build web --release
+	cd frontend && $(FVM)flutter build web --release --wasm
 	rm -rf src/ap_python_launcher/static/*
 	cp -r frontend/build/web/. src/ap_python_launcher/static/
 

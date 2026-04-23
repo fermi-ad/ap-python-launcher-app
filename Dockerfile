@@ -7,7 +7,7 @@ WORKDIR /build
 COPY frontend/ /build/frontend/
 RUN cd /build/frontend \
   && flutter pub get \
-  && flutter build web --release
+  && flutter build web --release --wasm
 
 # --- Stage 2: Python runtime ---
 FROM python:3.12-slim
@@ -27,21 +27,18 @@ RUN apt-get update \
 RUN python -m pip install --upgrade pip \
   && python -m pip install uv
 
-# Install python deps first (better layer caching)
+# Copy everything setuptools needs to resolve the src layout
 COPY pyproject.toml /app/pyproject.toml
 COPY uv.lock /app/uv.lock
+COPY README.md /app/README.md
+COPY LICENSE /app/LICENSE
+COPY src/ /app/src/
+
+# Embed Flutter build output into the package before install so it is
+# included in the installed package at Path(__file__).parent / "static"
+COPY --from=flutter-builder /build/frontend/build/web/ /app/src/ap_python_launcher/static/
 
 RUN uv sync --no-dev --frozen
-
-# Copy Flutter build output into the static directory served by FastAPI
-COPY --from=flutter-builder /build/frontend/build/web/ /app/ap_python_launcher/static/
-
-# Copy the source last
-COPY ap_python_launcher/ /app/ap_python_launcher/
-COPY README.md /app/README.md
-
-# Install the project itself into the same venv (deps already installed)
-RUN uv pip install --no-deps .
 
 # Create and switch to a non-root user
 RUN useradd -r -u 10001 -g root appuser \
