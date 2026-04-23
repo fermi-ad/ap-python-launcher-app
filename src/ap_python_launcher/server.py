@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -57,13 +57,6 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="ap-python-launcher", version="0.1.0")
     app.add_middleware(StripPrefixMiddleware)
-
-    static_dir = Path(__file__).parent / "static"
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-    @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
-        return (static_dir / "index.html").read_text(encoding="utf-8")
 
     @app.get("/healthz")
     def healthz() -> dict:
@@ -136,6 +129,25 @@ def create_app() -> FastAPI:
     @app.delete("/launch/{launch_id}")
     def delete_launch(launch_id: str) -> dict:
         return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
+
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        # Serve Flutter web build output at the root (/, /flutter_bootstrap.js, /assets/*, etc.)
+        app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+    else:
+        logging.getLogger(__name__).warning(
+            "Static directory not found; skipping static mount: %s", static_dir
+        )
+
+        from fastapi.responses import HTMLResponse
+
+        @app.get("/", response_class=HTMLResponse)
+        def root_fallback() -> str:
+            return (
+                "<!doctype html>"
+                "<html><head><meta charset='utf-8'></head>"
+                "<body><script src='flutter_bootstrap.js'></script></body></html>"
+            )
 
     return app
 

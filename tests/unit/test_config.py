@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from ap_launcher.config import load_web_config
+from ap_python_launcher.config import load_web_config
 
 # All AP_* env vars to clear for isolation
 _AP_VARS = [

@@ -8,7 +8,7 @@ Each launch creates:
 - a `Job` (and Pod) in the workload namespace, and
 - a per-launch `Service` of type `LoadBalancer` that selects the Pod by `ap-python.fnal.gov/launch-id`.
 
-The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](ap_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
+The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](src/ap_python_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
 
 The launcher will delete the per-launch Service when the Job finishes (Succeeded/Failed) or when the Pod disappears.
 
@@ -16,10 +16,51 @@ The launcher will delete the per-launch Service when the Job finishes (Succeeded
 
 ```bash
 uv sync
-uv run uvicorn ap_launcher.server:app --reload --port 8080
+make dev PORT=8080
 ```
 
 Then open: `http://localhost:8080/`
+
+## Frontend (Flutter web)
+
+The web UI is implemented as a Flutter web app in [`frontend/`](frontend/). The FastAPI server serves the built Flutter assets from [`src/ap_python_launcher/static/`](src/ap_python_launcher/static/) (this directory is a build artifact).
+
+This repo requires using [FVM](https://fvm.app/) for Flutter version management. Install FVM and run `fvm install` in the repo root to get the [pinned Flutter version](.fvmrc). All `make` targets and the commands below use `fvm flutter` automatically.
+
+### Build the frontend into the FastAPI static directory
+
+```bash
+make build-frontend
+```
+
+### Build the frontend and run the mock server
+
+```bash
+make build-mock
+```
+
+This builds the Flutter web frontend into the FastAPI static directory and then starts the mock server. Open: `http://localhost:8000/`
+
+### Run the frontend with hot reload (dev)
+
+In one terminal:
+
+```bash
+make mock PORT=8080
+```
+
+In another terminal:
+
+```bash
+cd frontend
+fvm flutter run -d chrome --web-port 5173
+```
+
+Then open: `http://localhost:5173/`
+
+Note: the Flutter dev server will not automatically proxy API calls to the FastAPI server. For local dev, either:
+- run the Flutter app from the FastAPI-served build output (`make build-mock` then open `http://localhost:8000/`), or
+- configure a proxy in your browser / dev environment.
 
 ## Docker
 

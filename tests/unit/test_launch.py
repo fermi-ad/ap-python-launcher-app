@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes.client.exceptions import ApiException
 
-from ap_launcher.launch import (
+from ap_python_launcher.launch import (
     LaunchLimitExceededError,
     MAX_JOBS_TOTAL,
     MAX_JOBS_PER_APP,

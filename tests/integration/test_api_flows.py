@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ap_launcher.discovery import HarborRepo
-from ap_launcher.launch import MAX_JOBS_PER_APP, MAX_JOBS_TOTAL
+from ap_python_launcher.discovery import HarborRepo
+from ap_python_launcher.launch import MAX_JOBS_PER_APP, MAX_JOBS_TOTAL
 
 
 # ---------------------------------------------------------------------------
@@ -62,11 +62,11 @@ def _svc_list(*svcs):
 @pytest.fixture
 def integrated_client(mocker):
     """Full TestClient with only network I/O mocked."""
-    mocker.patch("ap_launcher.launch.config.load_incluster_config")
-    mocker.patch("ap_launcher.launch.config.load_kube_config")
+    mocker.patch("ap_python_launcher.launch.config.load_incluster_config")
+    mocker.patch("ap_python_launcher.launch.config.load_kube_config")
 
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     return TestClient(create_app())
 
@@ -105,7 +105,7 @@ def test_apps_discovery_returns_empty_when_no_repos(mocker, integrated_client):
 def _mock_harbor_for_launch(mocker, repo: str = "ap-python/myapp", tag: str = "latest"):
     """Mock HarborClient.list_latest_apps to return a single matching repo."""
     mocker.patch(
-        "ap_launcher.server._make_harbor_client",
+        "ap_python_launcher.server._make_harbor_client",
         return_value=MagicMock(
             list_latest_apps=MagicMock(
                 return_value=[HarborRepo(repo=repo, tag=tag, all_tags=(tag,))]
@@ -119,8 +119,8 @@ def test_full_launch_flow(mocker, integrated_client):
     _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
-    mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
-    mocker.patch("ap_launcher.launch.client.CoreV1Api", return_value=mock_core)
+    mocker.patch("ap_python_launcher.launch.client.BatchV1Api", return_value=mock_batch)
+    mocker.patch("ap_python_launcher.launch.client.CoreV1Api", return_value=mock_core)
 
     # No active jobs (under limit)
     mock_batch.list_namespaced_job.return_value = _jobs_list()
@@ -141,8 +141,8 @@ def test_full_launch_then_status_running(mocker, integrated_client):
     _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
-    mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
-    mocker.patch("ap_launcher.launch.client.CoreV1Api", return_value=mock_core)
+    mocker.patch("ap_python_launcher.launch.client.BatchV1Api", return_value=mock_batch)
+    mocker.patch("ap_python_launcher.launch.client.CoreV1Api", return_value=mock_core)
 
     mock_batch.list_namespaced_job.return_value = _jobs_list()
     mock_batch.create_namespaced_job.return_value = MagicMock()
@@ -176,8 +176,8 @@ def test_global_job_limit_returns_429(mocker, integrated_client):
     _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
-    mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
-    mocker.patch("ap_launcher.launch.client.CoreV1Api", return_value=mock_core)
+    mocker.patch("ap_python_launcher.launch.client.BatchV1Api", return_value=mock_batch)
+    mocker.patch("ap_python_launcher.launch.client.CoreV1Api", return_value=mock_core)
 
     mock_batch.list_namespaced_job.return_value = _jobs_list(
         *[_make_job(active=1) for _ in range(MAX_JOBS_TOTAL)]
@@ -193,8 +193,8 @@ def test_per_app_job_limit_returns_429(mocker, integrated_client):
     _mock_harbor_for_launch(mocker)
     mock_batch = MagicMock()
     mock_core = MagicMock()
-    mocker.patch("ap_launcher.launch.client.BatchV1Api", return_value=mock_batch)
-    mocker.patch("ap_launcher.launch.client.CoreV1Api", return_value=mock_core)
+    mocker.patch("ap_python_launcher.launch.client.BatchV1Api", return_value=mock_batch)
+    mocker.patch("ap_python_launcher.launch.client.CoreV1Api", return_value=mock_core)
 
     under_total = _jobs_list(*[_make_job(active=1) for _ in range(5)])
     at_per_app = _jobs_list(*[_make_job(active=1) for _ in range(MAX_JOBS_PER_APP)])
@@ -214,11 +214,11 @@ def test_per_app_job_limit_returns_429(mocker, integrated_client):
 def test_readyz_reflects_env_vars(mocker, monkeypatch):
     monkeypatch.setenv("AP_HARBOR_PROJECT", "my-custom-project")
     monkeypatch.setenv("AP_WORKLOAD_NAMESPACE", "my-custom-ns")
-    mocker.patch("ap_launcher.launch.config.load_incluster_config")
-    mocker.patch("ap_launcher.launch.config.load_kube_config")
+    mocker.patch("ap_python_launcher.launch.config.load_incluster_config")
+    mocker.patch("ap_python_launcher.launch.config.load_kube_config")
 
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     c = TestClient(create_app())
     resp = c.get("/readyz")
@@ -236,13 +236,13 @@ def test_readyz_reflects_env_vars(mocker, monkeypatch):
 def test_harbor_auth_passed_through(mocker, monkeypatch):
     monkeypatch.setenv("AP_HARBOR_USERNAME", "robotuser")
     monkeypatch.setenv("AP_HARBOR_PASSWORD", "robotpass")
-    mocker.patch("ap_launcher.launch.config.load_incluster_config")
-    mocker.patch("ap_launcher.launch.config.load_kube_config")
+    mocker.patch("ap_python_launcher.launch.config.load_incluster_config")
+    mocker.patch("ap_python_launcher.launch.config.load_kube_config")
 
     # Capture HarborClient constructor args
     captured = {}
     original_init = __import__(
-        "ap_launcher.discovery", fromlist=["HarborClient"]
+        "ap_python_launcher.discovery", fromlist=["HarborClient"]
     ).HarborClient.__init__
 
     def patched_init(self, base_url, project, username, password):
@@ -250,11 +250,11 @@ def test_harbor_auth_passed_through(mocker, monkeypatch):
         captured["password"] = password
         original_init(self, base_url, project, username, password)
 
-    mocker.patch("ap_launcher.discovery.HarborClient.__init__", patched_init)
+    mocker.patch("ap_python_launcher.discovery.HarborClient.__init__", patched_init)
     mocker.patch("requests.Session.get", return_value=_make_response([]))
 
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     c = TestClient(create_app())
     c.get("/apps")

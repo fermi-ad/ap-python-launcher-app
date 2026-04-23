@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from ap_launcher.config import WebConfig
-from ap_launcher.discovery import HarborRepo
-from ap_launcher.test.fakes import FakeHarborClient, FakeKubeLauncher
-from ap_launcher.launch import LaunchLimitExceededError
+from ap_python_launcher.config import WebConfig
+from ap_python_launcher.discovery import HarborRepo
+from ap_python_launcher.test.fakes import FakeHarborClient, FakeKubeLauncher
+from ap_python_launcher.launch import LaunchLimitExceededError
 
 
 # ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ from ap_launcher.launch import LaunchLimitExceededError
 def mock_harbor(mocker):
     """Inject a FakeHarborClient (empty by default; set ._repos to customise)."""
     instance = FakeHarborClient(repos=[])
-    mocker.patch("ap_launcher.server.HarborClient", return_value=instance)
+    mocker.patch("ap_python_launcher.server.HarborClient", return_value=instance)
     return instance
 
 
@@ -25,16 +25,16 @@ def mock_harbor(mocker):
 def mock_launcher(mocker):
     """Inject a FakeKubeLauncher; resets class-level job state after each test."""
     instance = FakeKubeLauncher(namespace="test-ns")
-    mocker.patch("ap_launcher.server.KubeLauncher", return_value=instance)
+    mocker.patch("ap_python_launcher.server.KubeLauncher", return_value=instance)
     yield instance
     FakeKubeLauncher.reset()
 
 
 @pytest.fixture
 def client(mocker, base_config, mock_harbor, mock_launcher):
-    mocker.patch("ap_launcher.server.load_web_config", return_value=base_config)
+    mocker.patch("ap_python_launcher.server.load_web_config", return_value=base_config)
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     return TestClient(create_app())
 
@@ -48,7 +48,7 @@ def test_get_root_returns_html(client):
     resp = client.get("/")
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
-    assert "AP Python Launcher" in resp.text
+    assert "flutter_bootstrap.js" in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +126,16 @@ def test_apps_passes_credentials_to_harbor_client(mocker, base_config):
         lb_port=80,
         lb_annotations_json=None,
     )
-    mocker.patch("ap_launcher.server.load_web_config", return_value=cfg)
-    mock_cls = mocker.patch("ap_launcher.server.HarborClient")
+    mocker.patch("ap_python_launcher.server.load_web_config", return_value=cfg)
+    mock_cls = mocker.patch("ap_python_launcher.server.HarborClient")
     mock_cls.return_value.list_latest_apps.return_value = []
     mocker.patch(
-        "ap_launcher.server.KubeLauncher", return_value=FakeKubeLauncher(namespace="ns")
+        "ap_python_launcher.server.KubeLauncher",
+        return_value=FakeKubeLauncher(namespace="ns"),
     )
 
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     c = TestClient(create_app())
     c.get("/apps")
@@ -215,16 +216,16 @@ def test_launch_strips_http_from_image_ref(mocker, base_config):
         lb_port=80,
         lb_annotations_json=None,
     )
-    mocker.patch("ap_launcher.server.load_web_config", return_value=cfg)
+    mocker.patch("ap_python_launcher.server.load_web_config", return_value=cfg)
     instance = FakeKubeLauncher(namespace="ns")
-    mocker.patch("ap_launcher.server.KubeLauncher", return_value=instance)
+    mocker.patch("ap_python_launcher.server.KubeLauncher", return_value=instance)
     fake_harbor = FakeHarborClient(
         repos=[HarborRepo(repo="proj/app", tag="v1.0", all_tags=("v1.0", "latest"))]
     )
-    mocker.patch("ap_launcher.server.HarborClient", return_value=fake_harbor)
+    mocker.patch("ap_python_launcher.server.HarborClient", return_value=fake_harbor)
 
     from fastapi.testclient import TestClient
-    from ap_launcher.server import create_app
+    from ap_python_launcher.server import create_app
 
     c = TestClient(create_app())
     c.post("/launch", json={"repo": "proj/app"})

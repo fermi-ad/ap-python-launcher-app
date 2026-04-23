@@ -1,5 +1,15 @@
 # syntax=docker/dockerfile:1
 
+# --- Stage 1: build Flutter web assets ---
+FROM ghcr.io/cirruslabs/flutter:stable AS flutter-builder
+
+WORKDIR /build
+COPY frontend/ /build/frontend/
+RUN cd /build/frontend \
+  && flutter pub get \
+  && flutter build web --release
+
+# --- Stage 2: Python runtime ---
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -23,8 +33,11 @@ COPY uv.lock /app/uv.lock
 
 RUN uv sync --no-dev --frozen
 
+# Copy Flutter build output into the static directory served by FastAPI
+COPY --from=flutter-builder /build/frontend/build/web/ /app/ap_python_launcher/static/
+
 # Copy the source last
-COPY ap_launcher/ /app/ap_launcher/
+COPY ap_python_launcher/ /app/ap_python_launcher/
 COPY README.md /app/README.md
 
 # Install the project itself into the same venv (deps already installed)
@@ -38,4 +51,4 @@ USER 10001
 EXPOSE 8000
 
 # Run FastAPI via Uvicorn
-CMD ["/app/.venv/bin/python", "-m", "uvicorn", "ap_launcher.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/python", "-m", "uvicorn", "ap_python_launcher.server:app", "--host", "0.0.0.0", "--port", "8000"]

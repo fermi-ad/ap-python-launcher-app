@@ -1,0 +1,28 @@
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
+
+include:
+  - package:flutter_lints/flutter.yaml
+  - package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # The team determined that 'final' should be used wherever relevant (for any variable that does not change after initialization).
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    parameter_assignments: true  # Replaces prefer_final_parameters.
+
+plugins:
+  explicit_imports:
+    version: ^1.0.4
+    diagnostics:
+      explicit_dart_imports: true
+      explicit_flutter_imports: false
+      explicit_package_imports: true
+      explicit_relative_imports: true
