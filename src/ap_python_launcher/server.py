@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.requests import Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -41,14 +42,17 @@ def _make_kube_launcher(cfg: WebConfig) -> KubeLauncher:
     )
 
 
+# Messy hardcoded URL prefix to look for
 _URL_PREFIX = "/ap-python"
 
 
 class StripPrefixMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.scope["path"]
+        if path == _URL_PREFIX:
+            return RedirectResponse(url=_URL_PREFIX + "/", status_code=301)
         if path.startswith(_URL_PREFIX):
-            request.scope["path"] = path[len(_URL_PREFIX) :] or "/"
+            request.scope["path"] = path[len(_URL_PREFIX) :]
         return await call_next(request)
 
 

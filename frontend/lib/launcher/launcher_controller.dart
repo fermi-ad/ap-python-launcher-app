@@ -136,7 +136,7 @@ class PollSession {
         launchId: _launchId,
       ),
     );
-    _onStatus('Waiting for LoadBalancer...');
+    _onStatus('Waiting for container...');
   }
 }
 
@@ -150,13 +150,14 @@ class LauncherController {
   /// Optional [apiService] and [jobStore] can be injected for testing.
   /// [pollInterval] controls how often running jobs are polled.
   /// [endPollInterval] controls how often a terminating job is polled.
-  /// [endTimeout] is the maximum time to wait for a job to terminate.
+  /// [endTimeout] is how long to wait for confirmation before stopping
+  /// tracking and returning the row to idle.
   LauncherController({
     api.ApiService? apiService,
     jobs.JobStore? jobStore,
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
-    this.endTimeout = const Duration(seconds: 30),
+    this.endTimeout = const Duration(seconds: 60),
   }) : _api = apiService ?? api.HttpApiService(),
        _jobs = jobStore ?? jobs.JobStore();
   final api.ApiService _api;
@@ -168,7 +169,8 @@ class LauncherController {
   /// How often a terminating job is polled while waiting for it to end.
   final Duration endPollInterval;
 
-  /// Maximum time to wait for a job to terminate before giving up.
+  /// How long to wait for termination confirmation before stopping tracking
+  /// and returning the row to idle.
   final Duration endTimeout;
 
   /// The current list of available apps, updated by [refresh].
@@ -256,7 +258,7 @@ class LauncherController {
     try {
       final resp = await _api.postLaunch(repo);
       _setLaunchJson(resp.raw, notify);
-      _setStatus('Launch requested; waiting for LoadBalancer...', notify);
+      _setStatus('Launch requested...', notify);
 
       final launchId = resp.launchId;
       final resolvedTag = resp.tag ?? tag;
@@ -306,7 +308,7 @@ class LauncherController {
       return;
     }
 
-    final ended = await _pollUntilEnded(
+    await _pollUntilEnded(
       launchId,
       timeout: endTimeout,
       poll: endPollInterval,
@@ -316,18 +318,8 @@ class LauncherController {
     await _jobs.removeJob(launchId);
     _stopSession(launchId);
 
-    if (ended) {
-      _setStatus('Job ended', notify);
-      _setRowState(repo, tag, const RowState(kind: RowStateKind.idle), notify);
-    } else {
-      _setStatus('End requested; still terminating...', notify);
-      _setRowState(
-        repo,
-        tag,
-        RowState(kind: RowStateKind.ending, launchId: launchId),
-        notify,
-      );
-    }
+    _setStatus('Job ended', notify);
+    _setRowState(repo, tag, const RowState(kind: RowStateKind.idle), notify);
   }
 
   /// Restores persisted jobs against the given [currentTags] map.
@@ -353,11 +345,24 @@ class LauncherController {
         continue;
       }
 
+      _setRowState(
+        job.repo,
+        job.tag,
+        RowState(kind: RowStateKind.checking, launchId: job.launchId),
+        notify,
+      );
+
       api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(job.launchId);
       } on Exception {
         await _jobs.removeJob(job.launchId);
+        _setRowState(
+          job.repo,
+          job.tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
         continue;
       }
 
@@ -418,7 +423,7 @@ class LauncherController {
     _sessions.remove(launchId)?.stop();
   }
 
-  Future<bool> _pollUntilEnded(
+  Future<void> _pollUntilEnded(
     String launchId, {
     required Duration timeout,
     required Duration poll,
@@ -433,15 +438,13 @@ class LauncherController {
         if (st.status == 'NotFound' ||
             st.status == 'Succeeded' ||
             st.status == 'Failed') {
-          return true;
+          return;
         }
       } on Exception {
-        return true;
+        return;
       }
 
       await Future<void>.delayed(poll);
     }
-
-    return false;
   }
 }
