@@ -3,6 +3,10 @@ enum RowStateKind {
   /// No active job for this app.
   idle,
 
+  /// A saved launch ID was found on startup and its status is being verified
+  /// with the backend.
+  checking,
+
   /// A launch has been requested and is waiting to be scheduled.
   pending,
 

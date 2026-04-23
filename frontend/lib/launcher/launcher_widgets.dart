@@ -141,6 +141,7 @@ class AppsTable extends StatelessWidget {
 
   static String _statusText(RowState state) => switch (state.kind) {
     RowStateKind.idle => '—',
+    RowStateKind.checking => 'Checking...',
     RowStateKind.pending => 'Pending',
     RowStateKind.running => 'Running',
     RowStateKind.ready => 'Ready',
@@ -177,7 +178,8 @@ class AppsTable extends StatelessWidget {
                 endButton,
               ],
             );
-    } else if (state.kind == RowStateKind.pending ||
+    } else if (state.kind == RowStateKind.checking ||
+        state.kind == RowStateKind.pending ||
         state.kind == RowStateKind.running ||
         state.kind == RowStateKind.ending) {
       inner = endButton;

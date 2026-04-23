@@ -345,11 +345,24 @@ class LauncherController {
         continue;
       }
 
+      _setRowState(
+        job.repo,
+        job.tag,
+        RowState(kind: RowStateKind.checking, launchId: job.launchId),
+        notify,
+      );
+
       api.LaunchStatus st;
       try {
         st = await _api.getLaunchStatus(job.launchId);
       } on Exception {
         await _jobs.removeJob(job.launchId);
+        _setRowState(
+          job.repo,
+          job.tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
         continue;
       }
 

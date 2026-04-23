@@ -1,3 +1,5 @@
+import 'dart:async' show Completer;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:frontend/api_service.dart' as api;
@@ -101,6 +103,52 @@ void main() {
   });
 
   group('LauncherController.restoreJobs', () {
+    test('sets checking state before status is known', () async {
+      final completer = Completer<api.LaunchStatus>();
+      final checkingApi = _SuspendingStatusApiService(completer.future);
+
+      final jobs = FakeJobStore();
+      await jobs.saveJob('id1', 'ap-python/foo', 'latest');
+
+      final notify = NotifyCounter();
+      final c = LauncherController(apiService: checkingApi, jobStore: jobs);
+
+      final restoreFuture = c.restoreJobs(
+        const {'ap-python/foo': 'latest'},
+        notify.call,
+      );
+
+      await Future<void>.microtask(() {});
+
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.checking,
+      );
+
+      completer.complete(
+        api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Pending',
+              'urls': <String>[],
+            },
+          },
+        ),
+      );
+      await restoreFuture;
+
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.running,
+      );
+
+      c.dispose();
+    });
+
     test('does nothing when no saved jobs', () async {
       final fakeApi = FakeApiService();
       final jobs = FakeJobStore();
@@ -358,6 +406,28 @@ class _FailingLaunchApiService implements api.ApiService {
 
   @override
   Future<api.LaunchStatus> getLaunchStatus(String launchId) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+    throw UnimplementedError();
+  }
+}
+
+class _SuspendingStatusApiService implements api.ApiService {
+  _SuspendingStatusApiService(this._statusFuture);
+
+  final Future<api.LaunchStatus> _statusFuture;
+
+  @override
+  Future<List<api.AppInfo>> getApps() async => const [];
+
+  @override
+  Future<api.LaunchStatus> getLaunchStatus(String launchId) => _statusFuture;
+
+  @override
+  Future<api.LaunchResponse> postLaunch(String repo) async {
     throw UnimplementedError();
   }
 
