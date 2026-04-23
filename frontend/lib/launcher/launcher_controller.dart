@@ -258,7 +258,7 @@ class LauncherController {
     try {
       final resp = await _api.postLaunch(repo);
       _setLaunchJson(resp.raw, notify);
-      _setStatus('Launch requested; waiting for LoadBalancer...', notify);
+      _setStatus('Launch requested...', notify);
 
       final launchId = resp.launchId;
       final resolvedTag = resp.tag ?? tag;
