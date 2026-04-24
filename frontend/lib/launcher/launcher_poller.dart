@@ -70,9 +70,13 @@ class LauncherPoller {
   }
 
   void _ensurePollTimer() {
-    _pollTimer ??= Timer.periodic(_pollInterval, (_) {
+    if (_pollTimer != null) return;
+
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
       unawaited(_pollTrackedJobs());
     });
+
+    unawaited(_pollTrackedJobs());
   }
 
   Future<void> _pollTrackedJobs() async {
