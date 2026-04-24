@@ -36,8 +36,8 @@ void main() {
         jobStore: jobs,
         pollInterval: Duration.zero,
         onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (text) => statusText = text,
-      )..startTracking('id1', 'ap-python/foo', 'latest');
+        onStatus: (text, _) => statusText = text,
+      )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
 
@@ -72,8 +72,8 @@ void main() {
         jobStore: jobs,
         pollInterval: Duration.zero,
         onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (_) {},
-      )..startTracking('id1', 'ap-python/foo', 'latest');
+        onStatus: (text, notify) {},
+      )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
 
@@ -102,8 +102,8 @@ void main() {
         jobStore: jobs,
         pollInterval: Duration.zero,
         onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (_) {},
-      )..startTracking('id1', 'ap-python/foo', 'latest');
+        onStatus: (text, notify) {},
+      )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
 
@@ -158,8 +158,8 @@ void main() {
           jobStore: jobs,
           pollInterval: Duration.zero,
           onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-          onStatus: (_) {},
-        )..startTracking('id1', 'ap-python/foo', 'latest');
+          onStatus: (text, notify) {},
+        )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
         await pumpMicrotasks();
 
@@ -216,8 +216,8 @@ void main() {
           jobStore: jobs,
           pollInterval: Duration.zero,
           onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-          onStatus: (_) {},
-        )..startTracking('id1', 'ap-python/foo', 'latest');
+          onStatus: (text, notify) {},
+        )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
         await pumpMicrotasks();
 

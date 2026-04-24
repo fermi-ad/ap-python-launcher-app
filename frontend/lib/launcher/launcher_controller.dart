@@ -50,12 +50,15 @@ class LauncherController {
   String launchJson = 'No new launches';
 
   final Map<String, RowState> _rowStates = {};
+  String? _launchJsonTrackingId;
+
   late final LauncherPoller _polling = LauncherPoller(
     apiService: _api,
     jobStore: _jobs,
     pollInterval: pollInterval,
     onRowState: (repo, tag, state) => _rowStates[_key(repo, tag)] = state,
-    onStatus: (text) => statusText = text,
+    onStatus: _setStatus,
+    onLaunchJson: _setLaunchJsonFromStatus,
   );
 
   String _key(String repo, String tag) => '$repo:$tag';
@@ -79,6 +82,11 @@ class LauncherController {
   void _setLaunchJson(Object obj, void Function() notify) {
     launchJson = const JsonEncoder.withIndent('  ').convert(obj);
     notify();
+  }
+
+  void _setLaunchJsonFromStatus(api.LaunchStatus st, void Function() notify) {
+    if (_launchJsonTrackingId != st.launchId) return;
+    _setLaunchJson(st.raw, notify);
   }
 
   void _setRowState(
@@ -133,6 +141,8 @@ class LauncherController {
       final launchId = resp.launchId;
       final resolvedTag = resp.tag ?? tag;
       if (launchId.isEmpty) return;
+
+      _launchJsonTrackingId = launchId;
 
       await _jobs.saveJob(launchId, repo, resolvedTag);
       _setRowState(
@@ -279,7 +289,13 @@ class LauncherController {
     String tag,
     void Function() notify,
   ) {
-    _polling.startTracking(launchId, repo, tag);
+    _polling.startTracking(
+      launchId,
+      repo,
+      tag,
+      notify,
+      updateLaunchJson: _launchJsonTrackingId == launchId,
+    );
   }
 
   void _stopPolling(String launchId) {

@@ -1,4 +1,5 @@
 import 'dart:async' show Completer;
+import 'dart:collection' show Queue;
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -90,40 +91,26 @@ void main() {
       c.dispose();
     });
 
-    test('sets error status on failure', () async {
-      final failingApi = _FailingLaunchApiService();
-      final jobs = FakeJobStore();
-      final notify = NotifyCounter();
-      final c = LauncherController(apiService: failingApi, jobStore: jobs);
-
-      await c.launch('ap-python/foo', 'latest', notify.call);
-
-      expect(c.statusText, 'Launch failed');
-      expect(c.launchJson, contains('error'));
-    });
-
-    test('does not update launchJson during regular polling', () async {
+    test('notifies during background polling updates', () async {
       final fakeApi = FakeApiService()
         ..launchResponse = api.LaunchResponse(
           launchId: 'id1',
           tag: 'latest',
-          raw: const <String, dynamic>{
-            'launchId': 'id1',
-            'tag': 'latest',
-            'source': 'launch-response',
-          },
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
         )
         ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: api.LaunchAccess(status: 'Running', urls: const []),
+          access: api.LaunchAccess(
+            status: 'Ready',
+            urls: const ['http://host:80/'],
+          ),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
-              'status': 'Running',
-              'urls': <String>[],
+              'status': 'Ready',
+              'urls': <String>['http://host:80/'],
             },
-            'source': 'poll-status',
           },
         );
 
@@ -136,13 +123,93 @@ void main() {
       );
 
       await c.launch('ap-python/foo', 'latest', notify.call);
-      final launchJsonBeforePolling = c.launchJson;
+      final notifyBeforePolling = notify.count;
 
       await pumpMicrotasks();
 
-      expect(c.launchJson, launchJsonBeforePolling);
+      expect(notify.count, greaterThan(notifyBeforePolling));
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.ready,
+      );
+      expect(c.statusText, contains('App is reachable'));
+
+      c.dispose();
+    });
+
+    test('sets error status on failure', () async {
+      final failingApi = _FailingLaunchApiService();
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(apiService: failingApi, jobStore: jobs);
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
+
+      expect(c.statusText, 'Launch failed');
+      expect(c.launchJson, contains('error'));
+    });
+
+    test('updates launchJson during polling until ready', () async {
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
+          launchId: 'id1',
+          tag: 'latest',
+          raw: const <String, dynamic>{
+            'launchId': 'id1',
+            'tag': 'latest',
+            'source': 'launch-response',
+          },
+        );
+      fakeApi.launchStatusQueue['id1'] = Queue.of([
+        api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(status: 'Running', urls: const []),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Running',
+              'urls': <String>[],
+            },
+            'source': 'poll-status-1',
+          },
+        ),
+        api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(
+            status: 'Ready',
+            urls: const ['http://host:80/'],
+          ),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Ready',
+              'urls': <String>['http://host:80/'],
+            },
+            'source': 'poll-status-2',
+          },
+        ),
+      ]);
+
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+        pollInterval: Duration.zero,
+      );
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
       expect(c.launchJson, contains('launch-response'));
-      expect(c.launchJson, isNot(contains('poll-status')));
+
+      await pumpMicrotasks();
+
+      expect(c.launchJson, contains('poll-status-2'));
+
+      final launchJsonAfterReady = c.launchJson;
+      await pumpMicrotasks();
+      expect(c.launchJson, launchJsonAfterReady);
 
       c.dispose();
     });

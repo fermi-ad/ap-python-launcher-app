@@ -13,18 +13,22 @@ class LauncherPoller {
     required jobs.JobStore jobStore,
     required Duration pollInterval,
     required void Function(String repo, String tag, RowState state) onRowState,
-    required void Function(String text) onStatus,
+    required void Function(String text, void Function() notify) onStatus,
+    void Function(api.LaunchStatus st, void Function() notify)? onLaunchJson,
   }) : _api = apiService,
        _jobs = jobStore,
        _pollInterval = pollInterval,
        _onRowState = onRowState,
-       _onStatus = onStatus;
+       _onStatus = onStatus,
+       _onLaunchJson = onLaunchJson;
 
   final api.ApiService _api;
   final jobs.JobStore _jobs;
   final Duration _pollInterval;
   final void Function(String repo, String tag, RowState state) _onRowState;
-  final void Function(String text) _onStatus;
+  final void Function(String text, void Function() notify) _onStatus;
+  final void Function(api.LaunchStatus st, void Function() notify)?
+  _onLaunchJson;
 
   final Map<String, _TrackedJob> _trackedJobs = {};
 
@@ -40,8 +44,19 @@ class LauncherPoller {
 
   /// Starts tracking the given [launchId] for the app identified by [repo]
   /// and [tag].
-  void startTracking(String launchId, String repo, String tag) {
-    _trackedJobs[launchId] = _TrackedJob(repo: repo, tag: tag);
+  void startTracking(
+    String launchId,
+    String repo,
+    String tag,
+    void Function() notify, {
+    bool updateLaunchJson = false,
+  }) {
+    _trackedJobs[launchId] = _TrackedJob(
+      repo: repo,
+      tag: tag,
+      notify: notify,
+      updateLaunchJson: updateLaunchJson,
+    );
     _ensurePollTimer();
   }
 
@@ -113,11 +128,15 @@ class LauncherPoller {
       return;
     }
 
+    if (tracked.updateLaunchJson) {
+      _onLaunchJson?.call(st, tracked.notify);
+    }
+
     final urls = st.access.urls;
     final accessStatus = st.access.status;
 
     if (urls.isNotEmpty && accessStatus == 'Ready') {
-      _onStatus('App is reachable: ${urls.join(", ")}');
+      _onStatus('App is reachable: ${urls.join(", ")}', tracked.notify);
       _onRowState(
         tracked.repo,
         tracked.tag,
@@ -127,11 +146,12 @@ class LauncherPoller {
           connectUrl: urls.first,
         ),
       );
+      tracked.updateLaunchJson = false;
       return;
     }
 
     if (st.status == 'Succeeded' || st.status == 'Failed') {
-      _onStatus('Job ${st.status}; access cleaned up');
+      _onStatus('Job ${st.status}; access cleaned up', tracked.notify);
       await _jobs.removeJob(launchId);
       _onRowState(
         tracked.repo,
@@ -153,13 +173,20 @@ class LauncherPoller {
         launchId: launchId,
       ),
     );
-    _onStatus('Waiting for container...');
+    _onStatus('Waiting for container...', tracked.notify);
   }
 }
 
 class _TrackedJob {
-  const _TrackedJob({required this.repo, required this.tag});
+  _TrackedJob({
+    required this.repo,
+    required this.tag,
+    required this.notify,
+    required this.updateLaunchJson,
+  });
 
   final String repo;
   final String tag;
+  final void Function() notify;
+  bool updateLaunchJson;
 }
