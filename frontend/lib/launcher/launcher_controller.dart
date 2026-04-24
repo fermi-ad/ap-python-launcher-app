@@ -52,7 +52,7 @@ class LauncherController {
   final Map<String, RowState> _rowStates = {};
   String? _launchJsonTrackingId;
 
-  late final LauncherPoller _polling = LauncherPoller(
+  late final LauncherPoller _poller = LauncherPoller(
     apiService: _api,
     jobStore: _jobs,
     pollInterval: pollInterval,
@@ -71,7 +71,7 @@ class LauncherController {
 
   /// Stops all active polling and releases resources.
   void dispose() {
-    _polling.dispose();
+    _poller.dispose();
   }
 
   void _setStatus(String text, void Function() notify) {
@@ -289,7 +289,7 @@ class LauncherController {
     String tag,
     void Function() notify,
   ) {
-    _polling.startTracking(
+    _poller.startTracking(
       launchId,
       repo,
       tag,
@@ -299,7 +299,7 @@ class LauncherController {
   }
 
   void _stopPolling(String launchId) {
-    _polling.stopTracking(launchId);
+    _poller.stopTracking(launchId);
   }
 
   Future<void> _pollUntilEnded(
