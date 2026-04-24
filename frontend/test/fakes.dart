@@ -1,7 +1,14 @@
 import 'dart:async' show Future;
+import 'dart:collection' show Queue;
 
 import 'package:frontend/api_service.dart'
-    show ApiException, ApiService, AppInfo, LaunchResponse, LaunchStatus;
+    show
+        ApiException,
+        ApiService,
+        AppInfo,
+        LaunchAccess,
+        LaunchResponse,
+        LaunchStatus;
 import 'package:frontend/job_store.dart' show JobStore, SavedJob;
 
 class FakeApiService implements ApiService {
@@ -15,6 +22,11 @@ class FakeApiService implements ApiService {
 
   final Map<String, LaunchStatus> launchStatuses = {};
   final Map<String, Object> launchStatusErrors = {};
+
+  /// Per-launch queues of responses returned in order. When a queue is
+  /// non-empty, the next entry is dequeued and returned before the fallback
+  /// map is consulted.
+  final Map<String, Queue<LaunchStatus>> launchStatusQueue = {};
 
   final List<String> postLaunchCalls = [];
   final List<String> getLaunchStatusCalls = [];
@@ -39,12 +51,41 @@ class FakeApiService implements ApiService {
       throw Exception(err.toString());
     }
 
+    final queue = launchStatusQueue[launchId];
+    if (queue != null && queue.isNotEmpty) {
+      return queue.removeFirst();
+    }
+
     final st = launchStatuses[launchId];
     if (st == null) {
       throw ApiException(statusCode: 404, statusText: 'Not Found', body: '');
     }
 
     return st;
+  }
+
+  @override
+  Future<List<LaunchStatus>> getLaunchStatuses(List<String> launchIds) async {
+    final statuses = <LaunchStatus>[];
+    for (final launchId in launchIds) {
+      try {
+        statuses.add(await getLaunchStatus(launchId));
+      } on ApiException catch (e) {
+        if (e.statusCode == 404) {
+          statuses.add(
+            LaunchStatus(
+              launchId: launchId,
+              status: 'NotFound',
+              access: LaunchAccess(status: 'Pending', urls: const []),
+              raw: const <String, dynamic>{'status': 'NotFound'},
+            ),
+          );
+          continue;
+        }
+        rethrow;
+      }
+    }
+    return statuses;
   }
 
   @override

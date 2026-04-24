@@ -143,6 +143,9 @@ abstract class ApiService {
   /// Returns the current status of the launch identified by [launchId].
   Future<LaunchStatus> getLaunchStatus(String launchId);
 
+  /// Returns the current statuses for the given [launchIds].
+  Future<List<LaunchStatus>> getLaunchStatuses(List<String> launchIds);
+
   /// Deletes (ends) the launch identified by [launchId].
   Future<Map<String, dynamic>> deleteLaunch(String launchId);
 }
@@ -218,6 +221,21 @@ class HttpApiService implements ApiService {
   Future<LaunchStatus> getLaunchStatus(String launchId) async {
     final data = await _fetchJson('launch/$launchId');
     return LaunchStatus.fromJson(data);
+  }
+
+  @override
+  Future<List<LaunchStatus>> getLaunchStatuses(List<String> launchIds) async {
+    final data = await _fetchJson(
+      'launch/status',
+      method: 'POST',
+      headers: const {'Content-Type': 'application/json'},
+      body: {'launchIds': launchIds},
+    );
+    final launches = (data['launches'] as List?) ?? const [];
+    return launches
+        .whereType<Map<String, dynamic>>()
+        .map(LaunchStatus.fromJson)
+        .toList();
   }
 
   @override
