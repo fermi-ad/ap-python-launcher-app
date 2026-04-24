@@ -298,6 +298,35 @@ def test_launch_status_returns_correct_launch_id(client, mock_harbor):
 
 
 # ---------------------------------------------------------------------------
+# POST /launch/status
+# ---------------------------------------------------------------------------
+
+
+def test_batch_launch_status_returns_statuses_for_each_launch_id(client, mock_harbor):
+    mock_harbor._repos = [_LAUNCH_APP]
+    launch_id_1 = client.post("/launch", json={"repo": _LAUNCH_REPO}).json()["launchId"]
+    launch_id_2 = client.post("/launch", json={"repo": _LAUNCH_REPO}).json()["launchId"]
+
+    resp = client.post(
+        "/launch/status",
+        json={"launchIds": [launch_id_1, launch_id_2]},
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert [launch["launchId"] for launch in data["launches"]] == [
+        launch_id_1,
+        launch_id_2,
+    ]
+
+
+def test_batch_launch_status_rejects_invalid_launch_ids_body(client):
+    resp = client.post("/launch/status", json={"launchIds": ["ok", ""]})
+    assert resp.status_code == 400
+    assert "launchIds" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
 # StripPrefixMiddleware
 # ---------------------------------------------------------------------------
 

@@ -126,6 +126,24 @@ def create_app() -> FastAPI:
             "access": {"status": "Pending", "urls": []},
         }
 
+    @app.post("/launch/status")
+    def batch_launch_status(body: dict) -> dict:
+        launch_ids = body.get("launchIds")
+        if not isinstance(launch_ids, list) or not all(
+            isinstance(launch_id, str) and launch_id for launch_id in launch_ids
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Missing/invalid launchIds; expected non-empty strings",
+            )
+
+        kl = _make_kube_launcher(cfg)
+        return {
+            "launches": [
+                kl.get_launch_status(launch_id=launch_id) for launch_id in launch_ids
+            ]
+        }
+
     @app.get("/launch/{launch_id}")
     def launch_status(launch_id: str) -> dict:
         return _make_kube_launcher(cfg).get_launch_status(launch_id=launch_id)

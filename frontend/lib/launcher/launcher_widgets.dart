@@ -139,14 +139,20 @@ class AppsTable extends StatelessWidget {
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
-  static String _statusText(RowState state) => switch (state.kind) {
-    RowStateKind.idle => '—',
-    RowStateKind.checking => 'Checking...',
-    RowStateKind.pending => 'Pending',
-    RowStateKind.running => 'Running',
-    RowStateKind.ready => 'Ready',
-    RowStateKind.ending => 'Ending...',
-  };
+  static String _statusText(RowState state) {
+    final override = state.statusOverride;
+    if (override != null && override.isNotEmpty) return override;
+
+    return switch (state.kind) {
+      RowStateKind.idle => '—',
+      RowStateKind.checking => 'Checking...',
+      RowStateKind.pending => 'Pending',
+      RowStateKind.running => 'Running',
+      RowStateKind.ready => 'Ready',
+      RowStateKind.ending => 'Ending...',
+      RowStateKind.statusUnavailable => 'Unavailable',
+    };
+  }
 
   Widget _buildAction(
     RowState state,

@@ -1,4 +1,5 @@
 import 'dart:async' show Completer;
+import 'dart:collection' show Queue;
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,7 +8,8 @@ import 'package:frontend/launcher/launcher_controller.dart'
     show LauncherController;
 import 'package:frontend/launcher/launcher_models.dart' as models;
 
-import 'fakes.dart' show FakeApiService, FakeJobStore, NotifyCounter;
+import 'fakes.dart'
+    show FakeApiService, FakeJobStore, NotifyCounter, pumpMicrotasks;
 
 void main() {
   group('LauncherController.refresh', () {
@@ -89,6 +91,52 @@ void main() {
       c.dispose();
     });
 
+    test('notifies during background polling updates', () async {
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
+          launchId: 'id1',
+          tag: 'latest',
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
+        )
+        ..launchStatuses['id1'] = api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(
+            status: 'Ready',
+            urls: const ['http://host:80/'],
+          ),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Ready',
+              'urls': <String>['http://host:80/'],
+            },
+          },
+        );
+
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+        pollInterval: Duration.zero,
+      );
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
+      final notifyBeforePolling = notify.count;
+
+      await pumpMicrotasks();
+
+      expect(notify.count, greaterThan(notifyBeforePolling));
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.ready,
+      );
+      expect(c.statusText, contains('App is reachable'));
+
+      c.dispose();
+    });
+
     test('sets error status on failure', () async {
       final failingApi = _FailingLaunchApiService();
       final jobs = FakeJobStore();
@@ -99,6 +147,71 @@ void main() {
 
       expect(c.statusText, 'Launch failed');
       expect(c.launchJson, contains('error'));
+    });
+
+    test('updates launchJson during polling until ready', () async {
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
+          launchId: 'id1',
+          tag: 'latest',
+          raw: const <String, dynamic>{
+            'launchId': 'id1',
+            'tag': 'latest',
+            'source': 'launch-response',
+          },
+        );
+      fakeApi.launchStatusQueue['id1'] = Queue.of([
+        api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(status: 'Running', urls: const []),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Running',
+              'urls': <String>[],
+            },
+            'source': 'poll-status-1',
+          },
+        ),
+        api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(
+            status: 'Ready',
+            urls: const ['http://host:80/'],
+          ),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Ready',
+              'urls': <String>['http://host:80/'],
+            },
+            'source': 'poll-status-2',
+          },
+        ),
+      ]);
+
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+        pollInterval: Duration.zero,
+      );
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
+      expect(c.launchJson, contains('launch-response'));
+
+      await pumpMicrotasks();
+
+      expect(c.launchJson, contains('poll-status-2'));
+
+      final launchJsonAfterReady = c.launchJson;
+      await pumpMicrotasks();
+      expect(c.launchJson, launchJsonAfterReady);
+
+      c.dispose();
     });
   });
 
@@ -250,53 +363,8 @@ void main() {
     });
   });
 
-  group('LauncherController polling', () {
-    test(
-      'transitions to ready and stops polling when url becomes available',
-      () async {
-        final fakeApi = FakeApiService()
-          ..launchResponse = api.LaunchResponse(
-            launchId: 'id1',
-            tag: 'latest',
-            raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
-          )
-          ..launchStatuses['id1'] = api.LaunchStatus(
-            launchId: 'id1',
-            status: 'Running',
-            access: api.LaunchAccess(
-              status: 'Ready',
-              urls: const ['http://host:80/'],
-            ),
-            raw: const <String, dynamic>{
-              'status': 'Running',
-              'access': <String, dynamic>{
-                'status': 'Ready',
-                'urls': <String>['http://host:80/'],
-              },
-            },
-          );
-
-        final jobs = FakeJobStore();
-        final notify = NotifyCounter();
-        final c = LauncherController(
-          apiService: fakeApi,
-          jobStore: jobs,
-          pollInterval: Duration.zero,
-        );
-
-        await c.launch('ap-python/foo', 'latest', notify.call);
-
-        await Future<void>.delayed(Duration.zero);
-
-        final st = c.rowStateFor('ap-python/foo', 'latest');
-        expect(st.kind, models.RowStateKind.ready);
-        expect(st.connectUrl, 'http://host:80/');
-
-        c.dispose();
-      },
-    );
-
-    test('removes job and sets idle when status is Succeeded', () async {
+  group('LauncherController.end', () {
+    test('stops background polling before end polling begins', () async {
       final fakeApi = FakeApiService()
         ..launchResponse = api.LaunchResponse(
           launchId: 'id1',
@@ -321,47 +389,17 @@ void main() {
       final c = LauncherController(
         apiService: fakeApi,
         jobStore: jobs,
-        pollInterval: Duration.zero,
+        pollInterval: const Duration(days: 1),
+        endPollInterval: Duration.zero,
       );
 
       await c.launch('ap-python/foo', 'latest', notify.call);
+      expect(fakeApi.getLaunchStatusCalls, ['id1']);
 
-      await Future<void>.delayed(Duration.zero);
+      await c.end('id1', 'ap-python/foo', 'latest', notify.call);
 
-      expect(jobs.jobs, isEmpty);
-      expect(
-        c.rowStateFor('ap-python/foo', 'latest').kind,
-        models.RowStateKind.idle,
-      );
-
-      c.dispose();
-    });
-
-    test('removes job and sets idle on 404 ApiException', () async {
-      final fakeApi = FakeApiService()
-        ..launchResponse = api.LaunchResponse(
-          launchId: 'id1',
-          tag: 'latest',
-          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'latest'},
-        )
-        ..launchStatusErrors['id1'] = api.ApiException(
-          statusCode: 404,
-          statusText: 'Not Found',
-          body: '',
-        );
-
-      final jobs = FakeJobStore();
-      final notify = NotifyCounter();
-      final c = LauncherController(
-        apiService: fakeApi,
-        jobStore: jobs,
-        pollInterval: Duration.zero,
-      );
-
-      await c.launch('ap-python/foo', 'latest', notify.call);
-
-      await Future<void>.delayed(Duration.zero);
-
+      expect(fakeApi.deleteLaunchCalls, ['id1']);
+      expect(fakeApi.getLaunchStatusCalls, ['id1', 'id1']);
       expect(jobs.jobs, isEmpty);
       expect(
         c.rowStateFor('ap-python/foo', 'latest').kind,
@@ -390,6 +428,13 @@ class _FailingAppsApiService implements api.ApiService {
   }
 
   @override
+  Future<List<api.LaunchStatus>> getLaunchStatuses(
+    List<String> launchIds,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<api.LaunchResponse> postLaunch(String repo) async {
     throw UnimplementedError();
   }
@@ -410,6 +455,13 @@ class _FailingLaunchApiService implements api.ApiService {
   }
 
   @override
+  Future<List<api.LaunchStatus>> getLaunchStatuses(
+    List<String> launchIds,
+  ) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
     throw UnimplementedError();
   }
@@ -425,6 +477,13 @@ class _SuspendingStatusApiService implements api.ApiService {
 
   @override
   Future<api.LaunchStatus> getLaunchStatus(String launchId) => _statusFuture;
+
+  @override
+  Future<List<api.LaunchStatus>> getLaunchStatuses(
+    List<String> launchIds,
+  ) async {
+    return Future.wait(launchIds.map(getLaunchStatus));
+  }
 
   @override
   Future<api.LaunchResponse> postLaunch(String repo) async {
