@@ -106,7 +106,17 @@ class LauncherPoller {
         await _applyPolledStatus(launchId, tracked, status);
       }
     } on Exception {
-      // Ignore batch polling failures and try again on the next interval.
+      for (final entry in entries) {
+        final tracked = entry.value;
+        _onRowState(
+          tracked.repo,
+          tracked.tag,
+          const RowState(
+            kind: RowStateKind.statusUnavailable,
+            statusOverride: '⚠️ Status unavailable',
+          ),
+        );
+      }
     } finally {
       _pollInFlight = false;
     }

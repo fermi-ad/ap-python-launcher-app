@@ -10,6 +10,34 @@ import 'fakes.dart' show FakeApiService, FakeJobStore, pumpMicrotasks;
 
 void main() {
   group('LauncherPoller', () {
+    test('sets status to Unavailable when batch polling throws', () async {
+      final fakeApi = FakeApiService()
+        ..launchStatusErrors['id1'] = Exception('boom');
+
+      final jobs = FakeJobStore();
+      final rowStates = <String, models.RowState>{};
+      final poller = LauncherPoller(
+        apiService: fakeApi,
+        jobStore: jobs,
+        pollInterval: Duration.zero,
+        onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
+        onStatus: (text, notify) {},
+      )..startTracking('id1', 'ap-python/foo', 'latest', () {});
+
+      await pumpMicrotasks();
+
+      expect(
+        rowStates['ap-python/foo:latest']?.kind,
+        models.RowStateKind.statusUnavailable,
+      );
+      expect(
+        rowStates['ap-python/foo:latest']?.statusOverride,
+        '⚠️ Status unavailable',
+      );
+
+      poller.dispose();
+    });
+
     test('transitions to ready when url becomes available', () async {
       final fakeApi = FakeApiService()
         ..launchStatuses['id1'] = api.LaunchStatus(
