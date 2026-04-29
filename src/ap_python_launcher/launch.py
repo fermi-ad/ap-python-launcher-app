@@ -142,8 +142,8 @@ class KubeLauncher:
         job = client.V1Job(
             metadata=client.V1ObjectMeta(name=job_name, labels=labels),
             spec=client.V1JobSpec(
-                # Keep job records 7 days after completion
-                ttl_seconds_after_finished=7 * 24 * 60 * 60,
+                # Keep job records 24 hours after completion
+                ttl_seconds_after_finished=24 * 60 * 60,
                 # 24-hour hard timeout for running jobs
                 active_deadline_seconds=24 * 60 * 60,
                 backoff_limit=0,
