@@ -394,12 +394,12 @@ void main() {
       );
 
       await c.launch('ap-python/foo', 'latest', notify.call);
-      expect(fakeApi.getLaunchStatusCalls, isEmpty);
+      expect(fakeApi.getLaunchStatusCalls, ['id1']);
 
       await c.end('id1', 'ap-python/foo', 'latest', notify.call);
 
       expect(fakeApi.deleteLaunchCalls, ['id1']);
-      expect(fakeApi.getLaunchStatusCalls, ['id1']);
+      expect(fakeApi.getLaunchStatusCalls, ['id1', 'id1']);
       expect(jobs.jobs, isEmpty);
       expect(
         c.rowStateFor('ap-python/foo', 'latest').kind,

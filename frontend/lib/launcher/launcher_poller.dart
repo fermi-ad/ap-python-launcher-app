@@ -70,9 +70,13 @@ class LauncherPoller {
   }
 
   void _ensurePollTimer() {
-    _pollTimer ??= Timer.periodic(_pollInterval, (_) {
+    if (_pollTimer != null) return;
+
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
       unawaited(_pollTrackedJobs());
     });
+
+    unawaited(_pollTrackedJobs());
   }
 
   Future<void> _pollTrackedJobs() async {
@@ -106,7 +110,17 @@ class LauncherPoller {
         await _applyPolledStatus(launchId, tracked, status);
       }
     } on Exception {
-      // Ignore batch polling failures and try again on the next interval.
+      for (final entry in entries) {
+        final tracked = entry.value;
+        _onRowState(
+          tracked.repo,
+          tracked.tag,
+          const RowState(
+            kind: RowStateKind.statusUnavailable,
+            statusOverride: '⚠️ Status unavailable',
+          ),
+        );
+      }
     } finally {
       _pollInFlight = false;
     }
