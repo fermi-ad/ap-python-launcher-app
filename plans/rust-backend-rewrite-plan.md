@@ -11,10 +11,13 @@
 
 ## Proposed Rust stack (maintainable, small-service friendly)
 
+- Rust edition: 2024
 - HTTP server: Axum + Tower on Tokio
 - HTTP client: Reqwest
 - Kubernetes: kube-rs (with k8s-openapi via features)
 - Serialization: serde + serde_json
+- Time: chrono
+- Configuration/env: rust-env-var-lib
 - Errors: thiserror + anyhow
 - Logging/metrics:
   - tracing + tracing-subscriber

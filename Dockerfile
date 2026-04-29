@@ -9,43 +9,36 @@ RUN cd /build/frontend \
   && flutter pub get \
   && flutter build web --release --wasm
 
-# --- Stage 2: Python runtime ---
-FROM python:3.12-slim
+# --- Stage 2: build Rust backend ---
+FROM rust:1.88-slim AS rust-builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    UV_LINK_MODE=copy \
-    PATH="/root/.local/bin:$PATH"
+WORKDIR /build
+
+COPY rust-backend/ /build/rust-backend/
+
+RUN cd /build/rust-backend \
+  && cargo +nightly build --release
+
+# --- Stage 3: runtime ---
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# System deps
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Install uv (fast Python package installer)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+COPY --from=rust-builder /build/rust-backend/target/release/ap-python-launcher /app/ap-python-launcher
 
-# Copy everything setuptools needs to resolve the src layout
-COPY pyproject.toml /app/pyproject.toml
-COPY uv.lock /app/uv.lock
-COPY README.md /app/README.md
-COPY LICENSE /app/LICENSE
-COPY src/ /app/src/
+# Serve Flutter build output from ./static
+COPY --from=flutter-builder /build/frontend/build/web/ /app/static/
 
-# Embed Flutter build output into the package before install so it is
-# included in the installed package at Path(__file__).parent / "static"
-COPY --from=flutter-builder /build/frontend/build/web/ /app/src/ap_python_launcher/static/
-
-RUN uv sync --no-dev --frozen
-
-# Create and switch to a non-root user
 RUN useradd -r -u 10001 -g root appuser \
   && chown -R 10001:0 /app
 USER 10001
 
 EXPOSE 8000
 
-# Run FastAPI via Uvicorn
-CMD ["/app/.venv/bin/python", "-m", "uvicorn", "ap_python_launcher.server:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PORT=8000
+
+CMD ["/app/ap-python-launcher"]
