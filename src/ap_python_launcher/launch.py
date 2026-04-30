@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import random
 import tempfile
+from typing import NamedTuple
 import uuid
 
 from kubernetes import client, config
@@ -71,9 +72,48 @@ class KubeLauncher:
         self.batch = client.BatchV1Api()
         self.core = client.CoreV1Api()
 
+    def _get_canonical_shared_lb_ip(self) -> str | None:
+        if self.shared_lb_ip:
+            return self.shared_lb_ip
+
+        selector = "app.kubernetes.io/managed-by=ap-python-launcher"
+        services = self.core.list_namespaced_service(
+            namespace=self.namespace, label_selector=selector
+        )
+
+        class _Candidate(NamedTuple):
+            timestamp: datetime
+            ip: str
+
+        candidates: list[_Candidate] = []
+
+        for service in services.items:
+            spec = getattr(service, "spec", None)
+            if not spec:
+                continue
+            ip = getattr(spec, "load_balancer_ip", None)
+            if not isinstance(ip, str) or not ip:
+                continue
+
+            meta = getattr(service, "metadata", None)
+            timestamp = getattr(meta, "creation_timestamp", None) if meta else None
+            if not isinstance(timestamp, datetime):
+                continue
+
+            candidates.append(_Candidate(timestamp=timestamp, ip=ip))
+
+        if not candidates:
+            return None
+
+        try:
+            return min(candidates, key=lambda x: x.timestamp).ip
+        except TypeError:
+            # Some tests use MagicMocks for timestamps; fall back to first candidate.
+            return candidates[0].ip
+
     def _allocate_service_port(self, *, launch_id: str) -> int:
-        if not self.shared_lb_ip:
-            return self.lb_port
+        shared_ip = self._get_canonical_shared_lb_ip()
+        filter_by_ip = shared_ip is not None
 
         start = self.shared_lb_port_range_start
         end = self.shared_lb_port_range_end
@@ -92,7 +132,7 @@ class KubeLauncher:
             spec = getattr(service, "spec", None)
             if not spec:
                 continue
-            if getattr(spec, "load_balancer_ip", None) != self.shared_lb_ip:
+            if filter_by_ip and getattr(spec, "load_balancer_ip", None) != shared_ip:
                 continue
             ports = getattr(spec, "ports", None) or []
             for p in ports:
@@ -103,7 +143,7 @@ class KubeLauncher:
         candidates = [p for p in range(start, end + 1) if p not in used]
         if not candidates:
             raise LaunchLimitExceededError(
-                f"No free ports available in range {start}-{end} for shared IP {self.shared_lb_ip}"
+                f"No free ports available in range {start}-{end} for shared IP {shared_ip or '<dynamic>'}"
             )
 
         return random.choice(candidates)
@@ -259,6 +299,8 @@ class KubeLauncher:
         selector = {"ap-python.fnal.gov/launch-id": launch_id}
         annotations = self._parse_lb_annotations()
 
+        shared_ip = self._get_canonical_shared_lb_ip()
+
         if self.shared_lb_annotations_json:
             try:
                 extra = json.loads(self.shared_lb_annotations_json)
@@ -271,6 +313,9 @@ class KubeLauncher:
                     "AP_SHARED_LB_ANNOTATIONS_JSON must be a JSON object of string->string"
                 )
             annotations = {**annotations, **extra}
+        else:
+            annotations = dict(annotations)
+            annotations["metallb.io/allow-shared-ip"] = "ap-python-launcher"
 
         svc_spec = client.V1ServiceSpec(
             type="LoadBalancer",
@@ -285,8 +330,8 @@ class KubeLauncher:
             ],
         )
 
-        if self.shared_lb_ip:
-            svc_spec.load_balancer_ip = self.shared_lb_ip
+        if shared_ip:
+            svc_spec.load_balancer_ip = shared_ip
 
         svc = client.V1Service(
             metadata=client.V1ObjectMeta(

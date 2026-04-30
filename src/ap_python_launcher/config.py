@@ -24,8 +24,8 @@ class WebConfig:
     lb_port: int
     lb_annotations_json: str | None
 
-    # Optional: shared LoadBalancer IP mode. When enabled, each launch gets a unique
-    # external port on a single shared IP.
+    # If shared_lb_ip is unset, the launcher will attempt to discover a canonical
+    # shared IP from existing launcher-managed Services.
     shared_lb_ip: str | None
     shared_lb_annotations_json: str | None
     shared_lb_port_range_start: int

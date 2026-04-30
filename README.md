@@ -101,11 +101,13 @@ Environment variables (defaults shown):
 
 ### Per-launch Service exposure
 
-By default, each launch creates a `Service(type=LoadBalancer)` and uses `AP_LB_PORT` as the external port.
+Each launch creates a `Service(type=LoadBalancer)` using a shared external IP and a unique external port per launch.
 
-Optional shared-LB mode (single external IP, unique port per launch):
-- `AP_SHARED_LB_IP` (optional; if set, enables shared-LB mode and sets `Service.spec.loadBalancerIP`)
+Shared-LB settings:
+- `AP_SHARED_LB_IP` (optional; if set, forces `Service.spec.loadBalancerIP`)
+  - if unset, the launcher will try to discover a canonical shared IP from existing launcher-managed Services and join it
 - `AP_SHARED_LB_ANNOTATIONS_JSON` (optional; JSON object of string→string merged into the Service annotations)
+  - if unset, the launcher will add `metallb.io/allow-shared-ip=ap-python-launcher`
 - `AP_SHARED_LB_PORT_RANGE_START=30000`
 - `AP_SHARED_LB_PORT_RANGE_END=39999`
 
@@ -113,7 +115,7 @@ Example for MetalLB shared IP:
 
 ```bash
 export AP_SHARED_LB_IP=192.0.2.10
-export AP_SHARED_LB_ANNOTATIONS_JSON='{"metallb.io/allow-shared-ip":"ap-python"}'
+export AP_SHARED_LB_ANNOTATIONS_JSON='{"metallb.io/allow-shared-ip":"ap-python-launcher"}'
 export AP_SHARED_LB_PORT_RANGE_START=31000
 export AP_SHARED_LB_PORT_RANGE_END=31999
 ```
