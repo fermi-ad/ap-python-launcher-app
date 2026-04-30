@@ -18,6 +18,10 @@ def base_config():
         app_target_port=14500,
         lb_port=80,
         lb_annotations_json=None,
+        shared_lb_ip=None,
+        shared_lb_annotations_json=None,
+        shared_lb_port_range_start=30000,
+        shared_lb_port_range_end=39999,
     )
 
 

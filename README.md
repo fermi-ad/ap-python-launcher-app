@@ -98,3 +98,22 @@ Environment variables (defaults shown):
 - `AP_HARBOR_PASSWORD` (optional)
 - `AP_KUBECONFIG` (optional; kubeconfig *content* as a string. If unset, uses in-cluster auth.)
 - `AP_WORKLOAD_NAMESPACE=ap-python`
+
+### Per-launch Service exposure
+
+By default, each launch creates a `Service(type=LoadBalancer)` and uses `AP_LB_PORT` as the external port.
+
+Optional shared-LB mode (single external IP, unique port per launch):
+- `AP_SHARED_LB_IP` (optional; if set, enables shared-LB mode and sets `Service.spec.loadBalancerIP`)
+- `AP_SHARED_LB_ANNOTATIONS_JSON` (optional; JSON object of string→string merged into the Service annotations)
+- `AP_SHARED_LB_PORT_RANGE_START=30000`
+- `AP_SHARED_LB_PORT_RANGE_END=39999`
+
+Example for MetalLB shared IP:
+
+```bash
+export AP_SHARED_LB_IP=192.0.2.10
+export AP_SHARED_LB_ANNOTATIONS_JSON='{"metallb.io/allow-shared-ip":"ap-python"}'
+export AP_SHARED_LB_PORT_RANGE_START=31000
+export AP_SHARED_LB_PORT_RANGE_END=31999
+```

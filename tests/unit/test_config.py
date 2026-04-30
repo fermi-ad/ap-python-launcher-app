@@ -17,6 +17,10 @@ _AP_VARS = [
     "AP_APP_TARGET_PORT",
     "AP_LB_PORT",
     "AP_LB_ANNOTATIONS_JSON",
+    "AP_SHARED_LB_IP",
+    "AP_SHARED_LB_ANNOTATIONS_JSON",
+    "AP_SHARED_LB_PORT_RANGE_START",
+    "AP_SHARED_LB_PORT_RANGE_END",
 ]
 
 
@@ -37,6 +41,10 @@ def test_defaults_when_no_env_vars_set():
     assert cfg.app_target_port == 14500
     assert cfg.lb_port == 80
     assert cfg.lb_annotations_json is None
+    assert cfg.shared_lb_ip is None
+    assert cfg.shared_lb_annotations_json is None
+    assert cfg.shared_lb_port_range_start == 30000
+    assert cfg.shared_lb_port_range_end == 39999
 
 
 def test_all_env_vars_overridden(monkeypatch):
@@ -49,6 +57,12 @@ def test_all_env_vars_overridden(monkeypatch):
     monkeypatch.setenv("AP_APP_TARGET_PORT", "9000")
     monkeypatch.setenv("AP_LB_PORT", "8080")
     monkeypatch.setenv("AP_LB_ANNOTATIONS_JSON", '{"k": "v"}')
+    monkeypatch.setenv("AP_SHARED_LB_IP", "192.0.2.10")
+    monkeypatch.setenv(
+        "AP_SHARED_LB_ANNOTATIONS_JSON", '{"metallb.io/allow-shared-ip": "ap-python"}'
+    )
+    monkeypatch.setenv("AP_SHARED_LB_PORT_RANGE_START", "31000")
+    monkeypatch.setenv("AP_SHARED_LB_PORT_RANGE_END", "31010")
 
     cfg = load_web_config()
     assert cfg.harbor_base_url == "https://myharbor.io"
@@ -60,6 +74,12 @@ def test_all_env_vars_overridden(monkeypatch):
     assert cfg.app_target_port == 9000
     assert cfg.lb_port == 8080
     assert cfg.lb_annotations_json == '{"k": "v"}'
+    assert cfg.shared_lb_ip == "192.0.2.10"
+    assert (
+        cfg.shared_lb_annotations_json == '{"metallb.io/allow-shared-ip": "ap-python"}'
+    )
+    assert cfg.shared_lb_port_range_start == 31000
+    assert cfg.shared_lb_port_range_end == 31010
 
 
 def test_harbor_username_and_password_from_env(monkeypatch):

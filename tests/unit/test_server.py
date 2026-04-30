@@ -125,6 +125,10 @@ def test_apps_passes_credentials_to_harbor_client(mocker, base_config):
         app_target_port=14500,
         lb_port=80,
         lb_annotations_json=None,
+        shared_lb_ip=None,
+        shared_lb_annotations_json=None,
+        shared_lb_port_range_start=30000,
+        shared_lb_port_range_end=39999,
     )
     mocker.patch("ap_python_launcher.server.load_web_config", return_value=cfg)
     mock_cls = mocker.patch("ap_python_launcher.server.HarborClient")
@@ -215,6 +219,10 @@ def test_launch_strips_http_from_image_ref(mocker, base_config):
         app_target_port=14500,
         lb_port=80,
         lb_annotations_json=None,
+        shared_lb_ip=None,
+        shared_lb_annotations_json=None,
+        shared_lb_port_range_start=30000,
+        shared_lb_port_range_end=39999,
     )
     mocker.patch("ap_python_launcher.server.load_web_config", return_value=cfg)
     instance = FakeKubeLauncher(namespace="ns")
