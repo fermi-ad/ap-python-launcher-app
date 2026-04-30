@@ -411,6 +411,26 @@ def test_allocate_service_port_uses_only_ports_on_canonical_ip(
     assert launcher._allocate_service_port(launch_id="x") == 31002
 
 
+def test_create_job_raises_when_no_ports_available(
+    launcher, mock_batch_api, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.shared_lb_port_range_start = 31000
+    launcher.shared_lb_port_range_end = 31001
+
+    mock_batch_api.list_namespaced_job.return_value = _jobs_list()
+    mock_batch_api.create_namespaced_job.return_value = MagicMock()
+
+    s1 = _svc_with_lb_ip("10.0.0.9", ports=[31000])
+    s2 = _svc_with_lb_ip("10.0.0.9", ports=[31001])
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2)
+
+    with pytest.raises(LaunchLimitExceededError, match=r"No free ports available"):
+        launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+    mock_core_api.create_namespaced_service.assert_not_called()
+
+
 def test_ensure_loadbalancer_service_injects_metallb_allow_shared_ip_when_no_annotations_json(
     launcher, mock_core_api
 ):
