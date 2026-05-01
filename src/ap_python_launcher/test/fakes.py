@@ -66,9 +66,17 @@ class FakeKubeLauncher:
         app_target_port: int = 14500,
         lb_port: int = 80,
         lb_annotations_json: str | None = None,
+        shared_lb_ip: str | None = None,
+        shared_lb_annotations_json: str | None = None,
+        shared_lb_port_range_start: int = 30000,
+        shared_lb_port_range_end: int = 39999,
     ):
         self.namespace = namespace
         self.lb_port = lb_port
+        self.shared_lb_ip = shared_lb_ip
+        self.shared_lb_annotations_json = shared_lb_annotations_json
+        self.shared_lb_port_range_start = shared_lb_port_range_start
+        self.shared_lb_port_range_end = shared_lb_port_range_end
         # Records kwargs from the most recent create_job call; useful in tests.
         self.last_create_job_kwargs: dict = {}
 
@@ -95,12 +103,19 @@ class FakeKubeLauncher:
         short = launch_id.split("-")[0]
         job_name = f"fake-{safe_repo}-{short}"
         service_name = f"fake-svc-{short}"
+
+        if self.shared_lb_ip:
+            service_port = self.shared_lb_port_range_start
+        else:
+            service_port = self.lb_port
+
         self.__class__._jobs[launch_id] = {
             "repo": repo,
             "tag": tag,
             "image": image,
             "job_name": job_name,
             "service_name": service_name,
+            "service_port": service_port,
             "poll_count": 0,
         }
         return LaunchResult(
@@ -108,6 +123,7 @@ class FakeKubeLauncher:
             namespace=self.namespace,
             job_name=job_name,
             service_name=service_name,
+            service_port=service_port,
         )
 
     def get_launch_status(self, *, launch_id: str) -> dict:
@@ -115,6 +131,7 @@ class FakeKubeLauncher:
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = self.__class__._jobs[launch_id]
+        port = job.get("service_port", self.lb_port)
 
         # If deletion has been requested, surface that explicitly.
         if job.get("deleting") is True:
@@ -129,11 +146,11 @@ class FakeKubeLauncher:
                 status, urls, access_status = "Running", [], "Pending"
             elif count <= 3:
                 status = "Running"
-                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                urls = [f"http://fake-lb.example.com:{port}/"]
                 access_status = "Pending"
             else:
                 status = "Running"
-                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                urls = [f"http://fake-lb.example.com:{port}/"]
                 access_status = "Ready"
 
         return {

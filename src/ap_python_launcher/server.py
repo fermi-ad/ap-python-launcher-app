@@ -39,6 +39,10 @@ def _make_kube_launcher(cfg: WebConfig) -> KubeLauncher:
         app_target_port=cfg.app_target_port,
         lb_port=cfg.lb_port,
         lb_annotations_json=cfg.lb_annotations_json,
+        shared_lb_ip=cfg.shared_lb_ip,
+        shared_lb_annotations_json=cfg.shared_lb_annotations_json,
+        shared_lb_port_range_start=cfg.shared_lb_port_range_start,
+        shared_lb_port_range_end=cfg.shared_lb_port_range_end,
     )
 
 

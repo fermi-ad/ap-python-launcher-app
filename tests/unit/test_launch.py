@@ -335,6 +335,141 @@ def test_create_job_reraises_non_409_api_exception(
 
 
 # ---------------------------------------------------------------------------
+# shared LB discovery / allocation
+# ---------------------------------------------------------------------------
+
+
+def _svc_with_lb_ip(ip: str | None, ports: list[int] | None = None):
+    svc = MagicMock()
+    svc.spec.load_balancer_ip = ip
+    svc.spec.ports = [MagicMock(port=p) for p in (ports or [])]
+    return svc
+
+
+def test_get_canonical_shared_lb_ip_prefers_configured_ip(launcher, mock_core_api):
+    launcher.shared_lb_ip = "10.0.0.9"
+    mock_core_api.list_namespaced_service.return_value = _svc_list(
+        _svc_with_lb_ip("10.0.0.1"),
+        _svc_with_lb_ip("10.0.0.2"),
+    )
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.9"
+
+
+def test_get_canonical_shared_lb_ip_returns_none_when_no_services(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+    mock_core_api.list_namespaced_service.return_value = _svc_list()
+    assert launcher._get_canonical_shared_lb_ip() is None
+
+
+def test_get_canonical_shared_lb_ip_picks_oldest_service_creation_timestamp(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    from datetime import datetime, timezone
+
+    s1 = _svc_with_lb_ip("10.0.0.20")
+    s1.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    s2 = _svc_with_lb_ip("10.0.0.3")
+    s2.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    s3 = _svc_with_lb_ip("10.0.0.10")
+    s3.metadata.creation_timestamp = datetime(2026, 1, 3, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2, s3)
+
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.3"
+
+
+def test_allocate_service_port_uses_only_ports_on_canonical_ip(
+    launcher, mock_core_api, mocker
+):
+    launcher.shared_lb_ip = None
+    launcher.shared_lb_port_range_start = 31000
+    launcher.shared_lb_port_range_end = 31002
+
+    # Two IPs exist; canonical is 10.0.0.20 (oldest Service). Only ports on canonical should be considered used.
+    from datetime import datetime, timezone
+
+    s_old = _svc_with_lb_ip("10.0.0.20", ports=[31000, 31001])
+    s_old.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    s_new = _svc_with_lb_ip("10.0.0.10", ports=[31000])
+    s_new.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s_old, s_new)
+
+    # Make random deterministic for test.
+    mocker.patch(
+        "ap_python_launcher.launch.random.choice", side_effect=lambda xs: xs[0]
+    )
+
+    # Available on canonical: 31002 → should pick 31002.
+    assert launcher._allocate_service_port(launch_id="x") == 31002
+
+
+def test_create_job_raises_when_no_ports_available(
+    launcher, mock_batch_api, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.shared_lb_port_range_start = 31000
+    launcher.shared_lb_port_range_end = 31001
+
+    mock_batch_api.list_namespaced_job.return_value = _jobs_list()
+    mock_batch_api.create_namespaced_job.return_value = MagicMock()
+
+    s1 = _svc_with_lb_ip("10.0.0.9", ports=[31000])
+    s2 = _svc_with_lb_ip("10.0.0.9", ports=[31001])
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2)
+
+    with pytest.raises(LaunchLimitExceededError, match=r"No free ports available"):
+        launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+    mock_core_api.create_namespaced_service.assert_not_called()
+
+
+def test_ensure_loadbalancer_service_injects_metallb_allow_shared_ip_when_no_annotations_json(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.shared_lb_annotations_json = None
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert (
+        body.metadata.annotations["metallb.io/allow-shared-ip"] == "ap-python-launcher"
+    )
+
+
+def test_ensure_loadbalancer_service_merges_shared_lb_annotations_json_over_base(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.lb_annotations_json = '{"a":"1"}'
+    launcher.shared_lb_annotations_json = '{"a":"2","b":"3"}'
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.metadata.annotations["a"] == "2"
+    assert body.metadata.annotations["b"] == "3"
+
+
+# ---------------------------------------------------------------------------
 # get_launch_status
 # ---------------------------------------------------------------------------
 
