@@ -1,0 +1,57 @@
+services:
+  app-dev:
+    build:
+      context: .
+      dockerfile: compose/local/ap-python-launcher/Dockerfile
+    image: ap-python-launcher-dev:latest
+    stdin_open: true
+    tty: true
+    ports:
+      - "${DOCKER_DEV_PORT:-8000}:8000"
+    working_dir: /workspace
+    environment:
+      PORT: "8000"
+      KUBECONFIG: /workspace/.kube/config
+      MINIKUBE_HOME: /workspace/.minikube
+      AP_MOCK_MODE: ${AP_MOCK_MODE:-false}
+      AP_HARBOR_BASE_URL: ${AP_HARBOR_BASE_URL:-}
+      AP_HARBOR_PROJECT: ${AP_HARBOR_PROJECT:-}
+      AP_HARBOR_USERNAME: ${AP_HARBOR_USERNAME:-}
+      AP_HARBOR_PASSWORD: ${AP_HARBOR_PASSWORD:-}
+      AP_WORKLOAD_NAMESPACE: ${AP_WORKLOAD_NAMESPACE:-}
+      AP_SHARED_LB_IP: ${AP_SHARED_LB_IP:-}
+      AP_SHARED_LB_ANNOTATIONS_JSON: ${AP_SHARED_LB_ANNOTATIONS_JSON:-}
+      AP_SHARED_LB_PORT_RANGE_START: ${AP_SHARED_LB_PORT_RANGE_START:-}
+      AP_SHARED_LB_PORT_RANGE_END: ${AP_SHARED_LB_PORT_RANGE_END:-}
+      AP_KUBECONFIG: ${AP_KUBECONFIG_CONTENT:-}
+    volumes:
+      - .:/workspace
+      - ./.minikube:/workspace/.minikube
+      - ./.kube:/workspace/.kube
+    depends_on:
+      - minikube
+
+  minikube:
+    build:
+      context: .
+      dockerfile: compose/local/minikube/Dockerfile
+    image: ap-python-launcher-minikube:latest
+    privileged: true
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    environment:
+      KUBECONFIG: /workspace/.kube/config
+      MINIKUBE_HOME: /workspace/.minikube
+      MINIKUBE_PROFILE: ${MINIKUBE_PROFILE:-ap-python-launcher}
+      MINIKUBE_DRIVER: ${MINIKUBE_DRIVER:-docker}
+      MINIKUBE_CPUS: ${MINIKUBE_CPUS:-4}
+      MINIKUBE_MEMORY: ${MINIKUBE_MEMORY:-8192}
+      MINIKUBE_K8S_VERSION: ${MINIKUBE_K8S_VERSION:-}
+    volumes:
+      - .:/workspace
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - ./.minikube:/workspace/.minikube
+      - ./.kube:/workspace/.kube
+    command:
+      - /usr/local/bin/start.sh

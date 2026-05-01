@@ -64,6 +64,8 @@ Note: the Flutter dev server will not automatically proxy API calls to the FastA
 
 ## Docker
 
+### Production image
+
 **Build:**
 
 ```bash
@@ -84,9 +86,114 @@ Pass environment variables with `-e`:
 docker run --rm -p 8080:8000 \
   -e AP_HARBOR_USERNAME=myuser \
   -e AP_HARBOR_PASSWORD=mypassword \
-  -e AP_KUBECONFIG="$(cat ~/.kube/config)" \
+  -e AP_KUBECONFIG="$(cat /home/chowingt/.kube/config)" \
   ap-python-launcher
 ```
+
+### Development and integration testing with Docker Compose
+
+The local dev stack now uses [`compose.local.yaml`](compose.local.yaml) plus Dockerfiles under [`compose/local/`](compose/local/):
+- [`compose/local/ap-python-launcher/Dockerfile`](compose/local/ap-python-launcher/Dockerfile) builds the app container used for running the launcher and integration tests
+- [`compose/local/minikube/Dockerfile`](compose/local/minikube/Dockerfile) builds the dedicated Minikube management container
+- [`compose.local.yaml`](compose.local.yaml) defines the two-service stack
+
+#### Service layout
+
+- [`app-dev`](compose.local.yaml:2) runs the launcher app from [`compose/local/ap-python-launcher/Dockerfile`](compose/local/ap-python-launcher/Dockerfile)
+- [`minikube`](compose.local.yaml:34) runs the cluster manager from [`compose/local/minikube/Dockerfile`](compose/local/minikube/Dockerfile)
+
+Both services share repo-mounted [`.kube/`](.kube) and [`.minikube/`](.minikube) state so the app container can talk to the local cluster created by the Minikube container.
+
+#### Build the Compose images
+
+```bash
+make docker-dev-build
+```
+
+#### Start Minikube
+
+```bash
+make docker-minikube-start
+```
+
+This starts the dedicated [`minikube`](compose.local.yaml:34) service, which uses the host Docker daemon through the mounted Docker socket, installs upstream MetalLB automatically, applies [`compose/local/minikube/metallb-pool.yaml`](compose/local/minikube/metallb-pool.yaml), and keeps the Minikube profile alive.
+
+#### Start the app
+
+```bash
+make docker-dev-run AP_MOCK_MODE=false
+```
+
+Open: `http://localhost:8000/`
+
+#### Open a shell in the app container
+
+```bash
+make docker-dev-shell
+```
+
+Use this shell to run ad hoc commands like:
+
+```bash
+/workspace/.venv/bin/python -m pytest tests/integration -q
+kubectl get pods -A
+```
+
+#### Check or stop Minikube
+
+```bash
+make docker-minikube-status
+make docker-minikube-stop
+```
+
+#### Run integration tests against the local cluster
+
+```bash
+export AP_HARBOR_BASE_URL=https://adregistry.fnal.gov
+export AP_HARBOR_PROJECT=ap-python
+export AP_HARBOR_USERNAME=myuser
+export AP_HARBOR_PASSWORD=mypassword
+export AP_WORKLOAD_NAMESPACE=ap-python
+make docker-integration-run AP_MOCK_MODE=false
+```
+
+This starts [`minikube`](compose.local.yaml:34) if needed and runs [`pytest`](tests/integration) from the [`app-dev`](compose.local.yaml:2) container.
+
+#### Use real Harbor and shared-IP settings
+
+Export real credentials before running [`make docker-dev-run`](Makefile:87) or [`make docker-integration-run`](Makefile:104):
+
+```bash
+export AP_HARBOR_BASE_URL=https://adregistry.fnal.gov
+export AP_HARBOR_PROJECT=ap-python
+export AP_HARBOR_USERNAME=myuser
+export AP_HARBOR_PASSWORD=mypassword
+export AP_WORKLOAD_NAMESPACE=ap-python
+export AP_SHARED_LB_IP=192.168.49.10
+export AP_SHARED_LB_ANNOTATIONS_JSON='{"metallb.io/allow-shared-ip":"ap-python-launcher"}'
+```
+
+If you want to reuse an existing kubeconfig instead of the Compose-managed Minikube profile, inject kubeconfig content through [`AP_KUBECONFIG`](README.md:202):
+
+```bash
+make docker-dev-run AP_MOCK_MODE=false AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
+```
+
+#### Caveats
+
+The [`minikube`](compose.local.yaml:34) service still requires:
+- `--privileged`
+- access to the host Docker socket
+- host networking behavior that is compatible with Docker-driver Minikube and MetalLB
+
+On startup, [`start.sh`](compose/local/minikube/start.sh) performs this bootstrapping automatically:
+- starts Minikube
+- updates kube context
+- installs upstream MetalLB
+- waits for the MetalLB controller and speaker to become ready
+- applies [`compose/local/minikube/metallb-pool.yaml`](compose/local/minikube/metallb-pool.yaml)
+
+This is practical for local development, but it is still a high-trust setup.
 
 ## Configuration
 
