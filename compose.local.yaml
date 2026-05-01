@@ -1,5 +1,6 @@
 services:
   app-dev:
+    profiles: ["k8s", "harbor", "full"]
     build:
       context: .
       dockerfile: compose/local/ap-python-launcher/Dockerfile
@@ -14,11 +15,11 @@ services:
       KUBECONFIG: /workspace/.kube/config
       MINIKUBE_HOME: /workspace/.minikube
       AP_MOCK_MODE: ${AP_MOCK_MODE:-false}
-      AP_HARBOR_BASE_URL: ${AP_HARBOR_BASE_URL:-}
-      AP_HARBOR_PROJECT: ${AP_HARBOR_PROJECT:-}
-      AP_HARBOR_USERNAME: ${AP_HARBOR_USERNAME:-}
-      AP_HARBOR_PASSWORD: ${AP_HARBOR_PASSWORD:-}
-      AP_WORKLOAD_NAMESPACE: ${AP_WORKLOAD_NAMESPACE:-}
+      AP_HARBOR_BASE_URL: ${AP_HARBOR_BASE_URL:-http://localhost:8081}
+      AP_HARBOR_PROJECT: ${AP_HARBOR_PROJECT:-ap-python}
+      AP_HARBOR_USERNAME: ${AP_HARBOR_USERNAME:-admin}
+      AP_HARBOR_PASSWORD: ${AP_HARBOR_PASSWORD:-Harbor12345}
+      AP_WORKLOAD_NAMESPACE: ${AP_WORKLOAD_NAMESPACE:-ap-python}
       AP_SHARED_LB_IP: ${AP_SHARED_LB_IP:-}
       AP_SHARED_LB_ANNOTATIONS_JSON: ${AP_SHARED_LB_ANNOTATIONS_JSON:-}
       AP_SHARED_LB_PORT_RANGE_START: ${AP_SHARED_LB_PORT_RANGE_START:-}
@@ -28,10 +29,9 @@ services:
       - .:/workspace
       - ./.minikube:/workspace/.minikube
       - ./.kube:/workspace/.kube
-    depends_on:
-      - minikube
 
   minikube:
+    profiles: ["k8s", "full"]
     build:
       context: .
       dockerfile: compose/local/minikube/Dockerfile
@@ -55,3 +55,91 @@ services:
       - ./.kube:/workspace/.kube
     command:
       - /usr/local/bin/start.sh
+
+  harbor-db:
+    profiles: ["harbor", "full"]
+    image: goharbor/harbor-db:v2.12.0
+    environment:
+      POSTGRES_DB: registry
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root123
+    volumes:
+      - harbor_db_data:/var/lib/postgresql/data
+
+  harbor-redis:
+    profiles: ["harbor", "full"]
+    image: goharbor/redis-photon:v2.12.0
+    volumes:
+      - harbor_redis_data:/var/lib/redis
+
+  harbor-registry:
+    profiles: ["harbor", "full"]
+    image: goharbor/registry-photon:v2.12.0
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+    volumes:
+      - harbor_registry_data:/storage
+      - ./compose/local/harbor/config:/etc/registry
+
+  harbor-jobservice:
+    profiles: ["harbor", "full"]
+    image: goharbor/harbor-jobservice:v2.12.0
+    depends_on:
+      - harbor-redis
+      - harbor-registry
+    environment:
+      CORE_URL: http://harbor-core:8080
+      REGISTRY_CONTROLLER_URL: http://harbor-registry:5000
+      JOBSERVICE_SECRET: local-jobservice-secret
+    volumes:
+      - ./compose/local/harbor/config:/etc/jobservice
+      - harbor_job_logs:/var/log/jobs
+
+  harbor-core:
+    profiles: ["harbor", "full"]
+    image: goharbor/harbor-core:v2.12.0
+    depends_on:
+      - harbor-db
+      - harbor-redis
+      - harbor-registry
+      - harbor-jobservice
+    environment:
+      CORE_SECRET: local-core-secret
+      JOBSERVICE_SECRET: local-jobservice-secret
+      POSTGRESQL_HOST: harbor-db
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: registry
+      POSTGRESQL_USERNAME: postgres
+      POSTGRESQL_PASSWORD: root123
+      REGISTRY_URL: http://harbor-registry:5000
+      TOKEN_SERVICE_URL: http://harbor-core:8080/service/token
+      HARBOR_ADMIN_PASSWORD: Harbor12345
+      EXT_ENDPOINT: http://localhost:8081
+    volumes:
+      - ./compose/local/harbor/config:/etc/core
+      - harbor_core_data:/data
+
+  harbor-portal:
+    profiles: ["harbor", "full"]
+    image: goharbor/harbor-portal:v2.12.0
+    depends_on:
+      - harbor-core
+
+  harbor-proxy:
+    profiles: ["harbor", "full"]
+    image: nginx:1.27-alpine
+    depends_on:
+      - harbor-core
+      - harbor-portal
+      - harbor-registry
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./compose/local/harbor/nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  harbor_db_data:
+  harbor_redis_data:
+  harbor_registry_data:
+  harbor_job_logs:
+  harbor_core_data:

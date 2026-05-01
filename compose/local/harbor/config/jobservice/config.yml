@@ -1,0 +1,11 @@
+protocol: http
+port: 8080
+worker_pool:
+  workers: 10
+job_loggers:
+  - name: STD_OUTPUT
+logger_sweeper_duration: 1 #days
+redis_pool:
+  redis_url: redis://harbor-redis:6379/1?idle_timeout_seconds=30
+core_url: http://harbor-core:8080
+secret: local-jobservice-secret

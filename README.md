@@ -92,22 +92,49 @@ docker run --rm -p 8080:8000 \
 
 ### Development and integration testing with Docker Compose
 
-The local dev stack now uses [`compose.local.yaml`](compose.local.yaml) plus Dockerfiles under [`compose/local/`](compose/local/):
+The local dev stack now uses [`compose.local.yaml`](compose.local.yaml) plus Dockerfiles and vendored local assets under [`compose/local/`](compose/local/):
 - [`compose/local/ap-python-launcher/Dockerfile`](compose/local/ap-python-launcher/Dockerfile) builds the app container used for running the launcher and integration tests
 - [`compose/local/minikube/Dockerfile`](compose/local/minikube/Dockerfile) builds the dedicated Minikube management container
-- [`compose.local.yaml`](compose.local.yaml) defines the two-service stack
+- [`compose/local/harbor/`](compose/local/harbor/) contains the vendored local Harbor configuration assets
+- [`compose.local.yaml`](compose.local.yaml) defines profile-based local workflows
 
-#### Service layout
+#### Profiles and service layout
 
-- [`app-dev`](compose.local.yaml:2) runs the launcher app from [`compose/local/ap-python-launcher/Dockerfile`](compose/local/ap-python-launcher/Dockerfile)
-- [`minikube`](compose.local.yaml:34) runs the cluster manager from [`compose/local/minikube/Dockerfile`](compose/local/minikube/Dockerfile)
+- `k8s` profile:
+  - [`app-dev`](compose.local.yaml:2)
+  - [`minikube`](compose.local.yaml:32)
+- `harbor` profile:
+  - [`app-dev`](compose.local.yaml:2)
+  - [`harbor-db`](compose.local.yaml:58)
+  - [`harbor-redis`](compose.local.yaml:67)
+  - [`harbor-registry`](compose.local.yaml:73)
+  - [`harbor-jobservice`](compose.local.yaml:82)
+  - [`harbor-core`](compose.local.yaml:94)
+  - [`harbor-portal`](compose.local.yaml:113)
+  - [`harbor-proxy`](compose.local.yaml:118)
+- `full` profile:
+  - [`app-dev`](compose.local.yaml:2)
+  - [`minikube`](compose.local.yaml:32)
+  - local Harbor services listed above
 
-Both services share repo-mounted [`.kube/`](.kube) and [`.minikube/`](.minikube) state so the app container can talk to the local cluster created by the Minikube container.
+[`app-dev`](compose.local.yaml:2) runs the launcher app from [`compose/local/ap-python-launcher/Dockerfile`](compose/local/ap-python-launcher/Dockerfile).
+[`minikube`](compose.local.yaml:32) runs the cluster manager from [`compose/local/minikube/Dockerfile`](compose/local/minikube/Dockerfile).
+The Harbor-focused profile now uses the vendored local Harbor service set configured by [`compose/local/harbor/harbor.yml`](compose/local/harbor/harbor.yml), [`compose/local/harbor/nginx.conf`](compose/local/harbor/nginx.conf), and the files under [`compose/local/harbor/config/`](compose/local/harbor/config/).
+
+The Kubernetes-oriented services share repo-mounted [`.kube/`](.kube) and [`.minikube/`](.minikube) state so the app container can talk to the local cluster created by the Minikube container.
 
 #### Build the Compose images
 
+For the Kubernetes-focused workflow:
+
 ```bash
-make docker-dev-build
+make docker-dev-build COMPOSE_PROFILES=k8s
+```
+
+For the Harbor-focused workflow:
+
+```bash
+make docker-dev-build COMPOSE_PROFILES=harbor
 ```
 
 #### Start Minikube
@@ -116,20 +143,45 @@ make docker-dev-build
 make docker-minikube-start
 ```
 
-This starts the dedicated [`minikube`](compose.local.yaml:34) service, which uses the host Docker daemon through the mounted Docker socket, installs upstream MetalLB automatically, applies [`compose/local/minikube/metallb-pool.yaml`](compose/local/minikube/metallb-pool.yaml), and keeps the Minikube profile alive.
+This starts the dedicated [`minikube`](compose.local.yaml:35) service, which uses the host Docker daemon through the mounted Docker socket, installs upstream MetalLB automatically, applies [`compose/local/minikube/metallb-pool.yaml`](compose/local/minikube/metallb-pool.yaml), and keeps the Minikube profile alive.
+
+#### Start the Harbor profile
+
+```bash
+make docker-harbor-start
+```
+
+This starts the local Harbor service set and publishes Harbor at [`http://localhost:8081`](compose/local/harbor/harbor.yml).
 
 #### Start the app
 
+For Kubernetes-focused testing:
+
 ```bash
-make docker-dev-run AP_MOCK_MODE=false
+make docker-dev-run COMPOSE_PROFILES=k8s AP_MOCK_MODE=false
+```
+
+For Harbor-focused testing:
+
+```bash
+make docker-harbor-start
+make docker-dev-run COMPOSE_PROFILES=harbor AP_MOCK_MODE=false
 ```
 
 Open: `http://localhost:8000/`
 
 #### Open a shell in the app container
 
+For the Kubernetes-focused profile:
+
 ```bash
-make docker-dev-shell
+make docker-dev-shell COMPOSE_PROFILES=k8s
+```
+
+For the Harbor-focused profile:
+
+```bash
+make docker-harbor-shell
 ```
 
 Use this shell to run ad hoc commands like:
@@ -146,7 +198,15 @@ make docker-minikube-status
 make docker-minikube-stop
 ```
 
-#### Run integration tests against the local cluster
+#### Stop the Harbor scaffold
+
+```bash
+make docker-harbor-stop
+```
+
+#### Run integration tests against the selected profile
+
+For Kubernetes-focused testing:
 
 ```bash
 export AP_HARBOR_BASE_URL=https://adregistry.fnal.gov
@@ -154,10 +214,17 @@ export AP_HARBOR_PROJECT=ap-python
 export AP_HARBOR_USERNAME=myuser
 export AP_HARBOR_PASSWORD=mypassword
 export AP_WORKLOAD_NAMESPACE=ap-python
-make docker-integration-run AP_MOCK_MODE=false
+make docker-integration-run COMPOSE_PROFILES=k8s AP_MOCK_MODE=false
 ```
 
-This starts [`minikube`](compose.local.yaml:34) if needed and runs [`pytest`](tests/integration) from the [`app-dev`](compose.local.yaml:2) container.
+For Harbor-focused testing:
+
+```bash
+make docker-harbor-start
+make docker-integration-run COMPOSE_PROFILES=harbor AP_MOCK_MODE=false
+```
+
+This runs [`pytest`](tests/integration) from the [`app-dev`](compose.local.yaml:2) container against the currently selected profile.
 
 #### Use real Harbor and shared-IP settings
 
@@ -181,7 +248,7 @@ make docker-dev-run AP_MOCK_MODE=false AP_KUBECONFIG_CONTENT="$(cat /home/chowin
 
 #### Caveats
 
-The [`minikube`](compose.local.yaml:34) service still requires:
+The [`minikube`](compose.local.yaml:35) service still requires:
 - `--privileged`
 - access to the host Docker socket
 - host networking behavior that is compatible with Docker-driver Minikube and MetalLB
@@ -193,7 +260,9 @@ On startup, [`start.sh`](compose/local/minikube/start.sh) performs this bootstra
 - waits for the MetalLB controller and speaker to become ready
 - applies [`compose/local/minikube/metallb-pool.yaml`](compose/local/minikube/metallb-pool.yaml)
 
-This is practical for local development, but it is still a high-trust setup.
+The current [`harbor`](compose.local.yaml:60) service is only a scaffold placeholder so the Harbor-focused profile shape is explicit. The full local Harbor service set will be added in a follow-up under [`compose/local/harbor/`](compose/local/harbor/).
+
+This is practical for local development, but the Kubernetes profile remains a high-trust setup.
 
 ## Configuration
 
