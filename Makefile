@@ -28,7 +28,7 @@ dev: ## Run the server against a real Harbor/k8s (requires env vars)
 	$(UVICORN) ap_python_launcher.server:app --reload --port $(PORT)
 
 mock: ## Run the server with fakes — no Harbor or k8s needed
-	AP_MOCK_MODE=true $(UVICORN) ap_python_launcher.server:app --reload --port $(PORT)
+	AP_MOCK_HARBOR=true AP_MOCK_KUBE=true $(UVICORN) ap_python_launcher.server:app --reload --port $(PORT)
 
 lint: ## Run ruff + flutter analyze
 	$(PYTHON) -m ruff check ap_python_launcher tests
@@ -46,7 +46,7 @@ docker-build: build-frontend ## Build the Docker image
 	docker build -t $(IMAGE) .
 
 docker-run: ## Run the Docker image locally (mock mode)
-	docker run --rm -p $(PORT):8000 -e AP_MOCK_MODE=true $(IMAGE)
+	docker run --rm -p $(PORT):8000 -e AP_MOCK_HARBOR=true -e AP_MOCK_KUBE=true $(IMAGE)
 
 DOCKER_DEV_IMAGE ?= ap-python-launcher-dev:latest
 DOCKER_DEV_PORT  ?= 8000
@@ -63,7 +63,8 @@ COMPOSE_PROFILES ?= k8s
 # Pass through kube config content when needed, for example:
 #   make docker-dev-run AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
 AP_KUBECONFIG_CONTENT ?=
-AP_MOCK_MODE ?= false
+AP_MOCK_HARBOR ?= false
+AP_MOCK_KUBE ?= false
 
 COMPOSE_ENV = DOCKER_DEV_PORT=$(DOCKER_DEV_PORT) \
 	DOCKER_SOCKET=$(DOCKER_SOCKET) \
@@ -72,7 +73,8 @@ COMPOSE_ENV = DOCKER_DEV_PORT=$(DOCKER_DEV_PORT) \
 	MINIKUBE_CPUS=$(MINIKUBE_CPUS) \
 	MINIKUBE_MEMORY=$(MINIKUBE_MEMORY) \
 	MINIKUBE_K8S_VERSION=$(MINIKUBE_K8S_VERSION) \
-	AP_MOCK_MODE=$(AP_MOCK_MODE) \
+	AP_MOCK_HARBOR=$(AP_MOCK_HARBOR) \
+	AP_MOCK_KUBE=$(AP_MOCK_KUBE) \
 	AP_KUBECONFIG_CONTENT='$(AP_KUBECONFIG_CONTENT)' \
 	AP_HARBOR_BASE_URL='$(if $(AP_HARBOR_BASE_URL),$(AP_HARBOR_BASE_URL),http://localhost:8081)' \
 	AP_HARBOR_PROJECT='$(if $(AP_HARBOR_PROJECT),$(AP_HARBOR_PROJECT),ap-python)' \

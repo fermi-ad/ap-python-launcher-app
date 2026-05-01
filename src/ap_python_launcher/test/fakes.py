@@ -1,7 +1,8 @@
 """Concrete in-memory fakes for HarborClient and KubeLauncher.
 
 Shared by:
-  - AP_MOCK_MODE server: run `AP_MOCK_MODE=true uvicorn ...` for local UI dev
+  - explicit mock-flag server modes using `AP_MOCK_HARBOR=true` and/or
+    `AP_MOCK_KUBE=true` for local UI dev
   - Unit tests: inject via fixtures instead of MagicMock where fine-grained
     control (call_args, side_effect) is not required
 """

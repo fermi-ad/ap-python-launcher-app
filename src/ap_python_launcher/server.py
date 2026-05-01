@@ -15,8 +15,12 @@ from .discovery import HarborClient
 from .launch import KubeLauncher, LaunchLimitExceededError
 
 
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").lower() in ("1", "true", "yes")
+
+
 def _make_harbor_client(cfg: WebConfig) -> HarborClient:
-    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+    if _env_flag("AP_MOCK_HARBOR"):
         from .test.fakes import FakeHarborClient
 
         return FakeHarborClient()  # type: ignore[return-value]
@@ -29,7 +33,7 @@ def _make_harbor_client(cfg: WebConfig) -> HarborClient:
 
 
 def _make_kube_launcher(cfg: WebConfig) -> KubeLauncher:
-    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+    if _env_flag("AP_MOCK_KUBE"):
         from .test.fakes import FakeKubeLauncher
 
         return FakeKubeLauncher(namespace=cfg.workload_namespace)  # type: ignore[return-value]

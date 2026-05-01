@@ -155,17 +155,24 @@ This starts the local Harbor service set and publishes Harbor at [`http://localh
 
 #### Start the app
 
-For Kubernetes-focused testing:
+For Kubernetes-focused testing with both integrations real:
 
 ```bash
-make docker-dev-run COMPOSE_PROFILES=k8s AP_MOCK_MODE=false
+make docker-dev-run COMPOSE_PROFILES=k8s AP_MOCK_HARBOR=false AP_MOCK_KUBE=false
 ```
 
-For Harbor-focused testing:
+For Harbor-focused testing with both integrations real:
 
 ```bash
 make docker-harbor-start
-make docker-dev-run COMPOSE_PROFILES=harbor AP_MOCK_MODE=false
+make docker-dev-run COMPOSE_PROFILES=harbor AP_MOCK_HARBOR=false AP_MOCK_KUBE=false
+```
+
+For mixed real/fake combinations, use the independent interface toggles:
+
+```bash
+make docker-dev-run COMPOSE_PROFILES=harbor AP_MOCK_HARBOR=false AP_MOCK_KUBE=true
+make docker-dev-run COMPOSE_PROFILES=k8s AP_MOCK_HARBOR=true AP_MOCK_KUBE=false
 ```
 
 Open: `http://localhost:8000/`
@@ -214,17 +221,21 @@ export AP_HARBOR_PROJECT=ap-python
 export AP_HARBOR_USERNAME=myuser
 export AP_HARBOR_PASSWORD=mypassword
 export AP_WORKLOAD_NAMESPACE=ap-python
-make docker-integration-run COMPOSE_PROFILES=k8s AP_MOCK_MODE=false
+make docker-integration-run COMPOSE_PROFILES=k8s AP_MOCK_HARBOR=false AP_MOCK_KUBE=false
 ```
 
 For Harbor-focused testing:
 
 ```bash
 make docker-harbor-start
-make docker-integration-run COMPOSE_PROFILES=harbor AP_MOCK_MODE=false
+make docker-integration-run COMPOSE_PROFILES=harbor AP_MOCK_HARBOR=false AP_MOCK_KUBE=false
 ```
 
 This runs [`pytest`](tests/integration) from the [`app-dev`](compose.local.yaml:2) container against the currently selected profile.
+
+The app now supports independent mocking controls:
+- [`AP_MOCK_HARBOR`](src/ap_python_launcher/server.py:22) controls Harbor independently
+- [`AP_MOCK_KUBE`](src/ap_python_launcher/server.py:35) controls Kubernetes independently
 
 #### Use real Harbor and shared-IP settings
 
@@ -243,7 +254,7 @@ export AP_SHARED_LB_ANNOTATIONS_JSON='{"metallb.io/allow-shared-ip":"ap-python-l
 If you want to reuse an existing kubeconfig instead of the Compose-managed Minikube profile, inject kubeconfig content through [`AP_KUBECONFIG`](README.md:202):
 
 ```bash
-make docker-dev-run AP_MOCK_MODE=false AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
+make docker-dev-run AP_MOCK_HARBOR=false AP_MOCK_KUBE=false AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
 ```
 
 #### Caveats

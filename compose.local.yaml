@@ -14,7 +14,8 @@ services:
       PORT: "8000"
       KUBECONFIG: /workspace/.kube/config
       MINIKUBE_HOME: /workspace/.minikube
-      AP_MOCK_MODE: ${AP_MOCK_MODE:-false}
+      AP_MOCK_HARBOR: ${AP_MOCK_HARBOR:-false}
+      AP_MOCK_KUBE: ${AP_MOCK_KUBE:-false}
       AP_HARBOR_BASE_URL: ${AP_HARBOR_BASE_URL:-http://localhost:8081}
       AP_HARBOR_PROJECT: ${AP_HARBOR_PROJECT:-ap-python}
       AP_HARBOR_USERNAME: ${AP_HARBOR_USERNAME:-admin}
