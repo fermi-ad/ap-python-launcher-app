@@ -4,7 +4,7 @@ IMAGE   ?= ap-python-launcher:dev
 PORT    ?= 8000
 FVM     ?= ../.fvm/flutter_sdk/bin/
 
-.PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend build-mock docker-build docker-run docker-dev-build docker-dev-run docker-dev-shell docker-minikube-start docker-minikube-stop docker-minikube-status docker-integration-build docker-integration-run
+.PHONY: help install test test-backend test-frontend test-cov dev mock lint build-frontend build-mock docker-build docker-run compose-build-kube compose-run-kube compose-build-harbor compose-run-harbor compose-build-full compose-run-full compose-shell compose-minikube-status compose-harbor-shell compose-integration-run
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -61,7 +61,7 @@ COMPOSE ?= docker compose -f $(COMPOSE_FILE)
 COMPOSE_PROFILES ?= k8s
 
 # Pass through kube config content when needed, for example:
-#   make docker-dev-run AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
+#   make compose-run-kube AP_KUBECONFIG_CONTENT="$(cat /home/chowingt/.kube/config)"
 AP_KUBECONFIG_CONTENT ?=
 AP_MOCK_HARBOR ?= false
 AP_MOCK_KUBE ?= false
@@ -84,53 +84,44 @@ COMPOSE_ENV = DOCKER_DEV_PORT=$(DOCKER_DEV_PORT) \
 	AP_SHARED_LB_IP='$(AP_SHARED_LB_IP)' \
 	AP_SHARED_LB_ANNOTATIONS_JSON='$(AP_SHARED_LB_ANNOTATIONS_JSON)' \
 	AP_SHARED_LB_PORT_RANGE_START='$(AP_SHARED_LB_PORT_RANGE_START)' \
-	AP_SHARED_LB_PORT_RANGE_END='$(AP_SHARED_LB_PORT_RANGE_END)' \
-	COMPOSE_PROFILES='$(COMPOSE_PROFILES)'
+	AP_SHARED_LB_PORT_RANGE_END='$(AP_SHARED_LB_PORT_RANGE_END)'
 
 
-docker-dev-build: ## Build compose images for the selected profile(s)
-	$(COMPOSE_ENV) $(COMPOSE) build
+compose-kube-build: ## Build compose images for the Kubernetes-focused profile
+	$(COMPOSE_ENV) COMPOSE_PROFILES='k8s' $(COMPOSE) build
 
 
-docker-dev-run: ## Start the selected compose profile(s) and follow the app logs
-	mkdir -p .minikube .kube
-	$(COMPOSE_ENV) $(COMPOSE) up app-dev
+compose-kube-run: ## Start the Kubernetes-focused profile services and follow logs
+	$(COMPOSE_ENV) COMPOSE_PROFILES='k8s' $(COMPOSE) up app-dev minikube
 
 
-docker-dev-shell: ## Open an interactive shell in the app-dev container for the selected profile(s)
-	mkdir -p .minikube .kube
+compose-harbor-build: ## Build compose images for the Harbor-focused profile
+	$(COMPOSE_ENV) COMPOSE_PROFILES='harbor' $(COMPOSE) build
+
+
+compose-harbor-run: ## Start the Harbor-focused profile services and follow logs
+	$(COMPOSE_ENV) COMPOSE_PROFILES='harbor' $(COMPOSE) up app-dev harbor-db harbor-redis harbor-registry harbor-jobservice harbor-core harbor-portal harbor-proxy
+
+
+compose-full-build: ## Build compose images for the full local stack
+	$(COMPOSE_ENV) COMPOSE_PROFILES='full' $(COMPOSE) build
+
+
+compose-full-run: ## Start the full local stack and follow logs
+	$(COMPOSE_ENV) COMPOSE_PROFILES='full' $(COMPOSE) up app-dev minikube harbor-db harbor-redis harbor-registry harbor-jobservice harbor-core harbor-portal harbor-proxy
+
+
+compose-shell: ## Open an interactive shell in the app-dev container for the selected profile(s)
 	$(COMPOSE_ENV) $(COMPOSE) run --rm app-dev bash
 
 
-docker-minikube-start: ## Start the Kubernetes-focused profile services
-	mkdir -p .minikube .kube
-	$(COMPOSE_ENV) COMPOSE_PROFILES='k8s' $(COMPOSE) up -d minikube
-
-
-docker-minikube-stop: ## Stop the Minikube service
-	$(COMPOSE_ENV) COMPOSE_PROFILES='k8s' $(COMPOSE) stop minikube
-
-
-docker-minikube-status: ## Show Minikube profile status from the minikube container
+compose-minikube-status: ## Show Minikube profile status from the minikube container
 	$(COMPOSE_ENV) COMPOSE_PROFILES='k8s' $(COMPOSE) exec minikube bash -lc 'minikube status --profile $(MINIKUBE_PROFILE)'
 
 
-docker-harbor-start: ## Start the Harbor-focused local Harbor profile
-	$(COMPOSE_ENV) COMPOSE_PROFILES='harbor' $(COMPOSE) up -d harbor-db harbor-redis harbor-registry harbor-jobservice harbor-core harbor-portal harbor-proxy
-
-
-docker-harbor-stop: ## Stop the Harbor-focused local Harbor profile
-	$(COMPOSE_ENV) COMPOSE_PROFILES='harbor' $(COMPOSE) stop harbor-db harbor-redis harbor-registry harbor-jobservice harbor-core harbor-portal harbor-proxy
-
-
-docker-harbor-shell: ## Open a shell in the app-dev container with the Harbor profile selected
+compose-harbor-shell: ## Open a shell in the app-dev container with the Harbor profile selected
 	$(COMPOSE_ENV) COMPOSE_PROFILES='harbor' $(COMPOSE) run --rm app-dev bash
 
 
-docker-integration-build: ## Build compose images used for the selected profile(s)
-	$(COMPOSE_ENV) $(COMPOSE) build
-
-
-docker-integration-run: ## Run integration tests from the app-dev container against the selected profile(s)
-	mkdir -p .minikube .kube
+compose-integration-run: ## Run integration tests from the app-dev container against the selected profile(s)
 	$(COMPOSE_ENV) $(COMPOSE) run --rm app-dev bash -lc '/workspace/.venv/bin/python -m pytest tests/integration -q'

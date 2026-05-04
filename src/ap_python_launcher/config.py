@@ -32,6 +32,13 @@ class WebConfig:
     shared_lb_port_range_end: int
 
 
+def _get_int_env(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
 def load_web_config() -> WebConfig:
     """Load configuration from environment variables.
 
@@ -48,15 +55,11 @@ def load_web_config() -> WebConfig:
         harbor_password=os.environ.get("AP_HARBOR_PASSWORD"),
         kubeconfig=os.environ.get("AP_KUBECONFIG"),
         workload_namespace=os.environ.get("AP_WORKLOAD_NAMESPACE", "ap-python"),
-        app_target_port=int(os.environ.get("AP_APP_TARGET_PORT", "14500")),
-        lb_port=int(os.environ.get("AP_LB_PORT", "80")),
+        app_target_port=_get_int_env("AP_APP_TARGET_PORT", 14500),
+        lb_port=_get_int_env("AP_LB_PORT", 80),
         lb_annotations_json=os.environ.get("AP_LB_ANNOTATIONS_JSON"),
         shared_lb_ip=os.environ.get("AP_SHARED_LB_IP"),
         shared_lb_annotations_json=os.environ.get("AP_SHARED_LB_ANNOTATIONS_JSON"),
-        shared_lb_port_range_start=int(
-            os.environ.get("AP_SHARED_LB_PORT_RANGE_START", "30000")
-        ),
-        shared_lb_port_range_end=int(
-            os.environ.get("AP_SHARED_LB_PORT_RANGE_END", "39999")
-        ),
+        shared_lb_port_range_start=_get_int_env("AP_SHARED_LB_PORT_RANGE_START", 30000),
+        shared_lb_port_range_end=_get_int_env("AP_SHARED_LB_PORT_RANGE_END", 39999),
     )

@@ -28,8 +28,8 @@ services:
       AP_KUBECONFIG: ${AP_KUBECONFIG_CONTENT:-}
     volumes:
       - .:/workspace
-      - ./.minikube:/workspace/.minikube
-      - ./.kube:/workspace/.kube
+      - minikube_state:/workspace/.minikube
+      - kube_state:/workspace/.kube
 
   minikube:
     profiles: ["k8s", "full"]
@@ -52,8 +52,8 @@ services:
     volumes:
       - .:/workspace
       - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
-      - ./.minikube:/workspace/.minikube
-      - ./.kube:/workspace/.kube
+      - minikube_state:/workspace/.minikube
+      - kube_state:/workspace/.kube
     command:
       - /usr/local/bin/start.sh
 
@@ -139,6 +139,8 @@ services:
       - ./compose/local/harbor/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
+  minikube_state:
+  kube_state:
   harbor_db_data:
   harbor_redis_data:
   harbor_registry_data:

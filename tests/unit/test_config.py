@@ -110,6 +110,20 @@ def test_invalid_port_raises_value_error(monkeypatch):
         load_web_config()
 
 
+def test_empty_string_numeric_envs_use_defaults(monkeypatch):
+    monkeypatch.setenv("AP_APP_TARGET_PORT", "")
+    monkeypatch.setenv("AP_LB_PORT", "")
+    monkeypatch.setenv("AP_SHARED_LB_PORT_RANGE_START", "")
+    monkeypatch.setenv("AP_SHARED_LB_PORT_RANGE_END", "")
+
+    cfg = load_web_config()
+
+    assert cfg.app_target_port == 14500
+    assert cfg.lb_port == 80
+    assert cfg.shared_lb_port_range_start == 30000
+    assert cfg.shared_lb_port_range_end == 39999
+
+
 def test_lb_annotations_json_preserved_as_string(monkeypatch):
     monkeypatch.setenv(
         "AP_LB_ANNOTATIONS_JSON",
