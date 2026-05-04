@@ -39,7 +39,7 @@ make build-frontend
 make build-mock
 ```
 
-This builds the Flutter web frontend into the FastAPI static directory and then starts the mock server. Open: `http://localhost:8000/`
+This builds the Flutter web frontend into the FastAPI static directory and then starts the mock server with fake Harbor and fake Kubernetes. Open: `http://localhost:8000/`
 
 ### Run the frontend with hot reload (dev)
 
@@ -62,7 +62,7 @@ Note: the Flutter dev server will not automatically proxy API calls to the FastA
 - run the Flutter app from the FastAPI-served build output (`make build-mock` then open `http://localhost:8000/`), or
 - configure a proxy in your browser / dev environment.
 
-## Docker
+## Prod Docker workflow
 
 **Build:**
 
@@ -84,9 +84,56 @@ Pass environment variables with `-e`:
 docker run --rm -p 8080:8000 \
   -e AP_HARBOR_USERNAME=myuser \
   -e AP_HARBOR_PASSWORD=mypassword \
-  -e AP_KUBECONFIG="$(cat ~/.kube/config)" \
+  -e AP_KUBECONFIG="$(cat /home/chowingt/.kube/config)" \
   ap-python-launcher
 ```
+
+### Dev Docker workflow
+
+Prereqs:
+- Minikube installed and running
+- MetalLB installed in the cluster
+- A MetalLB IP pool configured (see [`manifests/metallb_ip_pool.yaml`](manifests/metallb_ip_pool.yaml))
+
+Use [`Dockerfile.dev`](Dockerfile.dev) together with [`make docker-dev`](Makefile) for local Minikube + MetalLB testing.
+
+For fake-Harbor + real-Kubernetes testing, a simple launchable image is provided in [`docker/test-app/Dockerfile`](docker/test-app/Dockerfile).
+
+Build and load all fake Harbor images into Minikube with:
+
+```bash
+make minikube-load-test-images
+```
+
+Then run the launcher with [`AP_MOCK_HARBOR`](README.md:117) enabled and [`AP_MOCK_KUBE`](README.md:118) unset so the fake Harbor catalog resolves to the real images now present in Minikube.
+
+1. Copy [`.env.example`](.env.example) to [`.env`](.env) and adjust values for your cluster.
+2. Create the workload namespace:
+
+   ```bash
+   kubectl apply -f manifests/ap_python_namespace.yaml
+   ```
+
+3. Generate a kubeconfig:
+
+   ```bash
+   kubectl config view --raw --minify --flatten > .kubeconfig
+   ```
+
+   Verify [`.kubeconfig`](.kubeconfig) contains `certificate-authority-data`, `client-certificate-data`, and `client-key-data` (not `certificate-authority`, `client-certificate`, `client-key`).
+
+   If you need to use a different kubeconfig context, set `KUBECONFIG=...` before running the command above.
+4. Run:
+
+```bash
+make docker-dev
+```
+
+This target:
+- builds [`Dockerfile.dev`](Dockerfile.dev)
+- passes the env file with `--env-file`
+- mounts the kubeconfig file into the container
+- sets `AP_KUBECONFIG_PATH` so the app loads kubeconfig from the mounted file
 
 ## Configuration
 
@@ -96,7 +143,10 @@ Environment variables (defaults shown):
 - `AP_HARBOR_PROJECT=ap-python`
 - `AP_HARBOR_USERNAME` (optional)
 - `AP_HARBOR_PASSWORD` (optional)
-- `AP_KUBECONFIG` (optional; kubeconfig *content* as a string. If unset, uses in-cluster auth.)
+- `AP_MOCK_HARBOR` (optional; if truthy, use the fake Harbor catalog)
+- `AP_MOCK_KUBE` (optional; if truthy, use the fake Kubernetes launcher)
+- `AP_KUBECONFIG` (optional; kubeconfig *content* as a string. If unset, uses in-cluster auth or a kubeconfig path.)
+- `AP_KUBECONFIG_PATH` (optional; path to a kubeconfig file. Used when `AP_KUBECONFIG` is unset.)
 - `AP_WORKLOAD_NAMESPACE=ap-python`
 
 ### Per-launch Service exposure

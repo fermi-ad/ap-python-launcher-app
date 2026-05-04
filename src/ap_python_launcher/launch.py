@@ -39,23 +39,23 @@ class KubeLauncher:
         namespace: str,
         *,
         kubeconfig_content: str | None = None,
+        kubeconfig_path: str | None = None,
         app_target_port: int = 14500,
         lb_port: int = 80,
         lb_annotations_json: str | None = None,
         shared_lb_ip: str | None = None,
-        shared_lb_annotations_json: str | None = None,
+        shared_lb_annotations_json: str = '{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
         shared_lb_port_range_start: int = 30000,
         shared_lb_port_range_end: int = 39999,
     ):
-        # Prefer explicitly-provided kubeconfig content (useful when running in-cluster
-        # but targeting a different cluster).
         if kubeconfig_content:
             with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
                 f.write(kubeconfig_content)
                 f.flush()
                 config.load_kube_config(config_file=f.name)
+        elif kubeconfig_path:
+            config.load_kube_config(config_file=kubeconfig_path)
         else:
-            # Prefer in-cluster config; fall back to default kubeconfig for local dev.
             try:
                 config.load_incluster_config()
             except Exception:
@@ -301,21 +301,17 @@ class KubeLauncher:
 
         shared_ip = self._get_canonical_shared_lb_ip()
 
-        if self.shared_lb_annotations_json:
-            try:
-                extra = json.loads(self.shared_lb_annotations_json)
-            except Exception as e:  # noqa: BLE001
-                raise ValueError(f"Invalid AP_SHARED_LB_ANNOTATIONS_JSON: {e}") from e
-            if not isinstance(extra, dict) or not all(
-                isinstance(k, str) and isinstance(val, str) for k, val in extra.items()
-            ):
-                raise ValueError(
-                    "AP_SHARED_LB_ANNOTATIONS_JSON must be a JSON object of string->string"
-                )
-            annotations = {**annotations, **extra}
-        else:
-            annotations = dict(annotations)
-            annotations["metallb.io/allow-shared-ip"] = "ap-python-launcher"
+        try:
+            extra = json.loads(self.shared_lb_annotations_json)
+        except Exception as e:  # noqa: BLE001
+            raise ValueError(f"Invalid AP_SHARED_LB_ANNOTATIONS_JSON: {e}") from e
+        if not isinstance(extra, dict) or not all(
+            isinstance(k, str) and isinstance(val, str) for k, val in extra.items()
+        ):
+            raise ValueError(
+                "AP_SHARED_LB_ANNOTATIONS_JSON must be a JSON object of string->string"
+            )
+        annotations = {**annotations, **extra}
 
         svc_spec = client.V1ServiceSpec(
             type="LoadBalancer",

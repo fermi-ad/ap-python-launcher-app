@@ -121,12 +121,13 @@ def test_apps_passes_credentials_to_harbor_client(mocker, base_config):
         harbor_username="myuser",
         harbor_password="mypass",
         kubeconfig=None,
+        kubeconfig_path=None,
         workload_namespace="ns",
         app_target_port=14500,
         lb_port=80,
         lb_annotations_json=None,
         shared_lb_ip=None,
-        shared_lb_annotations_json=None,
+        shared_lb_annotations_json='{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
         shared_lb_port_range_start=30000,
         shared_lb_port_range_end=39999,
     )
@@ -215,12 +216,13 @@ def test_launch_strips_http_from_image_ref(mocker, base_config):
         harbor_username=None,
         harbor_password=None,
         kubeconfig=None,
+        kubeconfig_path=None,
         workload_namespace="ns",
         app_target_port=14500,
         lb_port=80,
         lb_annotations_json=None,
         shared_lb_ip=None,
-        shared_lb_annotations_json=None,
+        shared_lb_annotations_json='{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
         shared_lb_port_range_start=30000,
         shared_lb_port_range_end=39999,
     )
@@ -354,3 +356,65 @@ def test_bare_prefix_redirects_to_trailing_slash(client):
     resp = client.get("/ap-python", follow_redirects=False)
     assert resp.status_code == 301
     assert resp.headers["location"] == "/ap-python/"
+
+
+def test_make_harbor_client_uses_fake_when_ap_mock_harbor_enabled(mocker, base_config):
+    mocker.patch.dict(
+        "os.environ",
+        {"AP_MOCK_HARBOR": "true"},
+        clear=False,
+    )
+
+    from ap_python_launcher.server import _make_harbor_client
+
+    client = _make_harbor_client(base_config)
+    assert isinstance(client, FakeHarborClient)
+
+
+def test_make_harbor_client_uses_real_when_ap_mock_harbor_disabled(mocker, base_config):
+    mocker.patch.dict("os.environ", {}, clear=False)
+    mock_cls = mocker.patch("ap_python_launcher.server.HarborClient")
+
+    from ap_python_launcher.server import _make_harbor_client
+
+    _make_harbor_client(base_config)
+    mock_cls.assert_called_once_with(
+        base_config.harbor_base_url,
+        base_config.harbor_project,
+        base_config.harbor_username,
+        base_config.harbor_password,
+    )
+
+
+def test_make_kube_launcher_uses_fake_when_ap_mock_kube_enabled(mocker, base_config):
+    mocker.patch.dict(
+        "os.environ",
+        {"AP_MOCK_KUBE": "true"},
+        clear=False,
+    )
+
+    from ap_python_launcher.server import _make_kube_launcher
+
+    launcher = _make_kube_launcher(base_config)
+    assert isinstance(launcher, FakeKubeLauncher)
+
+
+def test_make_kube_launcher_uses_real_when_ap_mock_kube_disabled(mocker, base_config):
+    mocker.patch.dict("os.environ", {}, clear=False)
+    mock_cls = mocker.patch("ap_python_launcher.server.KubeLauncher")
+
+    from ap_python_launcher.server import _make_kube_launcher
+
+    _make_kube_launcher(base_config)
+    mock_cls.assert_called_once_with(
+        namespace=base_config.workload_namespace,
+        kubeconfig_content=base_config.kubeconfig,
+        kubeconfig_path=base_config.kubeconfig_path,
+        app_target_port=base_config.app_target_port,
+        lb_port=base_config.lb_port,
+        lb_annotations_json=base_config.lb_annotations_json,
+        shared_lb_ip=base_config.shared_lb_ip,
+        shared_lb_annotations_json=base_config.shared_lb_annotations_json,
+        shared_lb_port_range_start=base_config.shared_lb_port_range_start,
+        shared_lb_port_range_end=base_config.shared_lb_port_range_end,
+    )

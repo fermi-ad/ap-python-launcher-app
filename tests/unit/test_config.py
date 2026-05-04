@@ -13,6 +13,7 @@ _AP_VARS = [
     "AP_HARBOR_USERNAME",
     "AP_HARBOR_PASSWORD",
     "AP_KUBECONFIG",
+    "AP_KUBECONFIG_PATH",
     "AP_WORKLOAD_NAMESPACE",
     "AP_APP_TARGET_PORT",
     "AP_LB_PORT",
@@ -37,12 +38,16 @@ def test_defaults_when_no_env_vars_set():
     assert cfg.harbor_username is None
     assert cfg.harbor_password is None
     assert cfg.kubeconfig is None
+    assert cfg.kubeconfig_path is None
     assert cfg.workload_namespace == "ap-python"
     assert cfg.app_target_port == 14500
     assert cfg.lb_port == 80
     assert cfg.lb_annotations_json is None
     assert cfg.shared_lb_ip is None
-    assert cfg.shared_lb_annotations_json is None
+    assert (
+        cfg.shared_lb_annotations_json
+        == '{"metallb.io/allow-shared-ip": "ap-python-launcher"}'
+    )
     assert cfg.shared_lb_port_range_start == 30000
     assert cfg.shared_lb_port_range_end == 39999
 
@@ -53,6 +58,7 @@ def test_all_env_vars_overridden(monkeypatch):
     monkeypatch.setenv("AP_HARBOR_USERNAME", "myuser")
     monkeypatch.setenv("AP_HARBOR_PASSWORD", "mypass")
     monkeypatch.setenv("AP_KUBECONFIG", "kubeconfig-content")
+    monkeypatch.setenv("AP_KUBECONFIG_PATH", "/tmp/kubeconfig")
     monkeypatch.setenv("AP_WORKLOAD_NAMESPACE", "my-ns")
     monkeypatch.setenv("AP_APP_TARGET_PORT", "9000")
     monkeypatch.setenv("AP_LB_PORT", "8080")
@@ -70,6 +76,7 @@ def test_all_env_vars_overridden(monkeypatch):
     assert cfg.harbor_username == "myuser"
     assert cfg.harbor_password == "mypass"
     assert cfg.kubeconfig == "kubeconfig-content"
+    assert cfg.kubeconfig_path == "/tmp/kubeconfig"
     assert cfg.workload_namespace == "my-ns"
     assert cfg.app_target_port == 9000
     assert cfg.lb_port == 8080
