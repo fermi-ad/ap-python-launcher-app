@@ -39,6 +39,7 @@ class KubeLauncher:
         namespace: str,
         *,
         kubeconfig_content: str | None = None,
+        kubeconfig_path: str | None = None,
         app_target_port: int = 14500,
         lb_port: int = 80,
         lb_annotations_json: str | None = None,
@@ -47,15 +48,14 @@ class KubeLauncher:
         shared_lb_port_range_start: int = 30000,
         shared_lb_port_range_end: int = 39999,
     ):
-        # Prefer explicitly-provided kubeconfig content (useful when running in-cluster
-        # but targeting a different cluster).
         if kubeconfig_content:
             with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
                 f.write(kubeconfig_content)
                 f.flush()
                 config.load_kube_config(config_file=f.name)
+        elif kubeconfig_path:
+            config.load_kube_config(config_file=kubeconfig_path)
         else:
-            # Prefer in-cluster config; fall back to default kubeconfig for local dev.
             try:
                 config.load_incluster_config()
             except Exception:

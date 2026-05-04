@@ -1,7 +1,7 @@
 """Concrete in-memory fakes for HarborClient and KubeLauncher.
 
 Shared by:
-  - AP_MOCK_MODE server: run `AP_MOCK_MODE=true uvicorn ...` for local UI dev
+  - AP_MOCK_HARBOR / AP_MOCK_KUBE server modes for local UI dev
   - Unit tests: inject via fixtures instead of MagicMock where fine-grained
     control (call_args, side_effect) is not required
 """
@@ -16,9 +16,9 @@ from ..launch import LaunchResult
 
 
 DEFAULT_REPOS = [
-    HarborRepo("ap-python/demo-app", "1", ("1", "latest", "edge")),
-    HarborRepo("ap-python/analysis-tool", "2", ("2", "latest", "edge")),
-    HarborRepo("ap-python/jupyter-env", "15", ("15", "latest", "edge")),
+    HarborRepo("ap-python/test-app-a", "latest", ("latest",)),
+    HarborRepo("ap-python/test-app-b", "latest", ("latest",)),
+    HarborRepo("ap-python/test-app-c", "latest", ("latest",)),
 ]
 
 

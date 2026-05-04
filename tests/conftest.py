@@ -14,6 +14,7 @@ def base_config():
         harbor_username=None,
         harbor_password=None,
         kubeconfig=None,
+        kubeconfig_path=None,
         workload_namespace="test-ns",
         app_target_port=14500,
         lb_port=80,

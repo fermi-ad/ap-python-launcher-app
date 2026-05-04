@@ -16,6 +16,7 @@ class WebConfig:
     # Optional: if set, the server will use this kubeconfig (content) instead of
     # in-cluster service account auth.
     kubeconfig: str | None
+    kubeconfig_path: str | None
 
     workload_namespace: str
 
@@ -47,6 +48,7 @@ def load_web_config() -> WebConfig:
         harbor_username=os.environ.get("AP_HARBOR_USERNAME"),
         harbor_password=os.environ.get("AP_HARBOR_PASSWORD"),
         kubeconfig=os.environ.get("AP_KUBECONFIG"),
+        kubeconfig_path=os.environ.get("AP_KUBECONFIG_PATH"),
         workload_namespace=os.environ.get("AP_WORKLOAD_NAMESPACE", "ap-python"),
         app_target_port=int(os.environ.get("AP_APP_TARGET_PORT", "14500")),
         lb_port=int(os.environ.get("AP_LB_PORT", "80")),
