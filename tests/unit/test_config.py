@@ -44,7 +44,10 @@ def test_defaults_when_no_env_vars_set():
     assert cfg.lb_port == 80
     assert cfg.lb_annotations_json is None
     assert cfg.shared_lb_ip is None
-    assert cfg.shared_lb_annotations_json is None
+    assert (
+        cfg.shared_lb_annotations_json
+        == '{"metallb.io/allow-shared-ip": "ap-python-launcher"}'
+    )
     assert cfg.shared_lb_port_range_start == 30000
     assert cfg.shared_lb_port_range_end == 39999
 

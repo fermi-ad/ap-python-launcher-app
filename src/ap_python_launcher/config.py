@@ -28,7 +28,7 @@ class WebConfig:
     # If shared_lb_ip is unset, the launcher will attempt to discover a canonical
     # shared IP from existing launcher-managed Services.
     shared_lb_ip: str | None
-    shared_lb_annotations_json: str | None
+    shared_lb_annotations_json: str
     shared_lb_port_range_start: int
     shared_lb_port_range_end: int
 
@@ -54,7 +54,10 @@ def load_web_config() -> WebConfig:
         lb_port=int(os.environ.get("AP_LB_PORT", "80")),
         lb_annotations_json=os.environ.get("AP_LB_ANNOTATIONS_JSON"),
         shared_lb_ip=os.environ.get("AP_SHARED_LB_IP"),
-        shared_lb_annotations_json=os.environ.get("AP_SHARED_LB_ANNOTATIONS_JSON"),
+        shared_lb_annotations_json=os.environ.get(
+            "AP_SHARED_LB_ANNOTATIONS_JSON",
+            '{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
+        ),
         shared_lb_port_range_start=int(
             os.environ.get("AP_SHARED_LB_PORT_RANGE_START", "30000")
         ),

@@ -431,25 +431,6 @@ def test_create_job_raises_when_no_ports_available(
     mock_core_api.create_namespaced_service.assert_not_called()
 
 
-def test_ensure_loadbalancer_service_injects_metallb_allow_shared_ip_when_no_annotations_json(
-    launcher, mock_core_api
-):
-    launcher.shared_lb_ip = "10.0.0.9"
-    launcher.shared_lb_annotations_json = None
-
-    launcher._ensure_loadbalancer_service(
-        service_name="svc",
-        labels={"k": "v"},
-        launch_id="lid",
-        service_port=31000,
-    )
-
-    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
-    assert (
-        body.metadata.annotations["metallb.io/allow-shared-ip"] == "ap-python-launcher"
-    )
-
-
 def test_ensure_loadbalancer_service_merges_shared_lb_annotations_json_over_base(
     launcher, mock_core_api
 ):

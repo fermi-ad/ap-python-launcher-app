@@ -127,7 +127,7 @@ def test_apps_passes_credentials_to_harbor_client(mocker, base_config):
         lb_port=80,
         lb_annotations_json=None,
         shared_lb_ip=None,
-        shared_lb_annotations_json=None,
+        shared_lb_annotations_json='{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
         shared_lb_port_range_start=30000,
         shared_lb_port_range_end=39999,
     )
@@ -222,7 +222,7 @@ def test_launch_strips_http_from_image_ref(mocker, base_config):
         lb_port=80,
         lb_annotations_json=None,
         shared_lb_ip=None,
-        shared_lb_annotations_json=None,
+        shared_lb_annotations_json='{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
         shared_lb_port_range_start=30000,
         shared_lb_port_range_end=39999,
     )
