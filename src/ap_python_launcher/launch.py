@@ -338,6 +338,7 @@ class KubeLauncher:
                     protocol="TCP",
                 )
             ],
+            external_traffic_policy="Cluster",
         )
 
         if self.shared_lb_ip:
