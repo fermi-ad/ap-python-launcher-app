@@ -339,10 +339,19 @@ def test_create_job_reraises_non_409_api_exception(
 # ---------------------------------------------------------------------------
 
 
-def _svc_with_lb_ip(ip: str | None, ports: list[int] | None = None):
+def _svc_with_lb_ip(
+    ip: str | None,
+    ports: list[int] | None = None,
+    *,
+    status_ingress_ip: str | None = None,
+):
     svc = MagicMock()
     svc.spec.load_balancer_ip = ip
     svc.spec.ports = [MagicMock(port=p) for p in (ports or [])]
+    if status_ingress_ip is not None:
+        ingress = MagicMock()
+        ingress.ip = status_ingress_ip
+        svc.status.load_balancer.ingress = [ingress]
     return svc
 
 
@@ -361,6 +370,24 @@ def test_get_canonical_shared_lb_ip_returns_none_when_no_services(
     launcher.shared_lb_ip = None
     mock_core_api.list_namespaced_service.return_value = _svc_list()
     assert launcher._get_canonical_shared_lb_ip() is None
+
+
+def test_get_canonical_shared_lb_ip_uses_status_ingress_when_spec_ip_missing(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    from datetime import datetime, timezone
+
+    s1 = _svc_with_lb_ip(None, status_ingress_ip="10.0.0.20")
+    s1.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    s2 = _svc_with_lb_ip(None, status_ingress_ip="10.0.0.3")
+    s2.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2)
+
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.3"
 
 
 def test_get_canonical_shared_lb_ip_picks_oldest_service_creation_timestamp(

@@ -88,14 +88,30 @@ class KubeLauncher:
         candidates: list[_Candidate] = []
 
         for service in services.items:
+            meta = getattr(service, "metadata", None)
+
             spec = getattr(service, "spec", None)
-            if not spec:
-                continue
-            ip = getattr(spec, "load_balancer_ip", None)
-            if not isinstance(ip, str) or not ip:
+            status = getattr(service, "status", None)
+
+            spec_ip = getattr(spec, "load_balancer_ip", None) if spec else None
+            ingress = (
+                getattr(getattr(status, "load_balancer", None), "ingress", None)
+                if status
+                else None
+            )
+            status_ip = None
+            if ingress:
+                first = ingress[0]
+                status_ip = getattr(first, "ip", None) or getattr(
+                    first, "hostname", None
+                )
+
+            ip = spec_ip if isinstance(spec_ip, str) and spec_ip else None
+            if not ip and isinstance(status_ip, str) and status_ip:
+                ip = status_ip
+            if not ip:
                 continue
 
-            meta = getattr(service, "metadata", None)
             timestamp = getattr(meta, "creation_timestamp", None) if meta else None
             if not isinstance(timestamp, datetime):
                 continue
