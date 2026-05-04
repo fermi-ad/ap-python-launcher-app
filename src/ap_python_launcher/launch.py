@@ -315,8 +315,6 @@ class KubeLauncher:
         selector = {"ap-python.fnal.gov/launch-id": launch_id}
         annotations = self._parse_lb_annotations()
 
-        shared_ip = self._get_canonical_shared_lb_ip()
-
         try:
             extra = json.loads(self.shared_lb_annotations_json)
         except Exception as e:  # noqa: BLE001
@@ -342,8 +340,8 @@ class KubeLauncher:
             ],
         )
 
-        if shared_ip:
-            svc_spec.load_balancer_ip = shared_ip
+        if self.shared_lb_ip:
+            svc_spec.load_balancer_ip = self.shared_lb_ip
 
         svc = client.V1Service(
             metadata=client.V1ObjectMeta(

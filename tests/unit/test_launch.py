@@ -477,6 +477,38 @@ def test_ensure_loadbalancer_service_merges_shared_lb_annotations_json_over_base
     assert body.metadata.annotations["b"] == "3"
 
 
+def test_ensure_loadbalancer_service_sets_load_balancer_ip_only_when_configured(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.spec.load_balancer_ip == "10.0.0.9"
+
+
+def test_ensure_loadbalancer_service_does_not_set_load_balancer_ip_when_unset(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.spec.load_balancer_ip is None
+
+
 # ---------------------------------------------------------------------------
 # get_launch_status
 # ---------------------------------------------------------------------------
