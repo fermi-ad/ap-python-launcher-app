@@ -284,16 +284,34 @@ class KubeLauncher:
             ),
         )
 
-        self.batch.create_namespaced_job(namespace=self.namespace, body=job)
+        created_job = self.batch.create_namespaced_job(
+            namespace=self.namespace, body=job
+        )
 
         # Create per-launch access point.
         service_name = self._service_name_for_launch(repo=repo, launch_id=launch_id)
         service_port = self._allocate_service_port(launch_id=launch_id)
+
+        job_uid = getattr(getattr(created_job, "metadata", None), "uid", None)
+        owner_refs = None
+        if isinstance(job_uid, str) and job_uid:
+            owner_refs = [
+                client.V1OwnerReference(
+                    api_version="batch/v1",
+                    kind="Job",
+                    name=job_name,
+                    uid=job_uid,
+                    block_owner_deletion=False,
+                    controller=False,
+                )
+            ]
+
         self._ensure_loadbalancer_service(
             service_name=service_name,
             labels=labels,
             launch_id=launch_id,
             service_port=service_port,
+            owner_references=owner_refs,
         )
 
         return LaunchResult(
@@ -311,6 +329,7 @@ class KubeLauncher:
         labels: dict[str, str],
         launch_id: str,
         service_port: int,
+        owner_references: list[client.V1OwnerReference] | None = None,
     ) -> None:
         selector = {"ap-python.fnal.gov/launch-id": launch_id}
         annotations = self._parse_lb_annotations()
@@ -346,7 +365,10 @@ class KubeLauncher:
 
         svc = client.V1Service(
             metadata=client.V1ObjectMeta(
-                name=service_name, labels=labels, annotations=annotations
+                name=service_name,
+                labels=labels,
+                annotations=annotations,
+                owner_references=owner_references,
             ),
             spec=svc_spec,
         )
@@ -386,27 +408,12 @@ class KubeLauncher:
             urls.append(f"http://{host}:{port}/")
         return urls
 
-    def _delete_service_for_launch(self, *, launch_id: str) -> bool:
-        svc = self._get_service(launch_id=launch_id)
-        if not svc:
-            return False
-        name = svc.metadata.name if svc.metadata and svc.metadata.name else None
-        if not name:
-            return False
-        try:
-            self.core.delete_namespaced_service(name=name, namespace=self.namespace)
-        except ApiException as e:
-            if getattr(e, "status", None) != 404:
-                raise
-        return True
-
     def delete_job(self, *, launch_id: str) -> dict:
         selector = f"ap-python.fnal.gov/launch-id={launch_id}"
         jobs = self.batch.list_namespaced_job(
             namespace=self.namespace, label_selector=selector
         )
         if not jobs.items:
-            self._delete_service_for_launch(launch_id=launch_id)
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
 
         job = jobs.items[0]
@@ -421,7 +428,6 @@ class KubeLauncher:
             if getattr(e, "status", None) != 404:
                 raise
 
-        self._delete_service_for_launch(launch_id=launch_id)
         return {"launchId": launch_id, "deleted": True, "jobName": job_name}
 
     def get_launch_status(self, *, launch_id: str) -> dict:
@@ -431,8 +437,6 @@ class KubeLauncher:
             namespace=self.namespace, label_selector=selector
         )
         if not jobs.items:
-            # Best-effort cleanup
-            self._delete_service_for_launch(launch_id=launch_id)
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = jobs.items[0]
@@ -474,14 +478,6 @@ class KubeLauncher:
         svc = self._get_service(launch_id=launch_id)
         service_name = svc.metadata.name if svc and svc.metadata else None
         urls = self._get_service_urls(svc) if svc else []
-
-        # Cleanup service when job is no longer running, is being deleted, or pod disappeared.
-        if status in {"Succeeded", "Failed", "Ending"} or pod_name is None:
-            self._delete_service_for_launch(launch_id=launch_id)
-            svc = None
-            service_name = None
-            urls = []
-            pod_ready = False
 
         return {
             "launchId": launch_id,

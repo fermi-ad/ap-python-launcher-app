@@ -10,7 +10,7 @@ Each launch creates:
 
 The `POST /launch` response includes `launchId` and `serviceName`. Poll [`GET /launch/{launchId}`](src/ap_python_launcher/server.py:117) until `access.urls` becomes non-empty, then open one of the returned URLs.
 
-The launcher will delete the per-launch Service when the Job finishes (Succeeded/Failed) or when the Pod disappears.
+The per-launch Service is created with an `ownerReference` pointing at the Job. When the Job is deleted (for example via `ttlSecondsAfterFinished`), Kubernetes garbage collection will also delete the Service.
 
 ## Run locally
 
