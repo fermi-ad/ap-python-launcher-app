@@ -408,7 +408,7 @@ class KubeLauncher:
             urls.append(f"http://{host}:{port}/")
         return urls
 
-    def delete_job(self, *, launch_id: str) -> dict:
+    def end_job(self, *, launch_id: str) -> dict:
         selector = f"ap-python.fnal.gov/launch-id={launch_id}"
         jobs = self.batch.list_namespaced_job(
             namespace=self.namespace, label_selector=selector
@@ -418,11 +418,12 @@ class KubeLauncher:
 
         job = jobs.items[0]
         job_name = job.metadata.name
+
         try:
-            self.batch.delete_namespaced_job(
+            self.batch.patch_namespaced_job(
                 name=job_name,
                 namespace=self.namespace,
-                body=client.V1DeleteOptions(propagation_policy="Foreground"),
+                body={"spec": {"activeDeadlineSeconds": 1}},
             )
         except ApiException as e:
             if getattr(e, "status", None) != 404:
