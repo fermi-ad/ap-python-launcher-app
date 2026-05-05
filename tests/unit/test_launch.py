@@ -267,7 +267,9 @@ def _setup_create_job(launcher, mock_batch_api, mock_core_api):
     """Set up mocks for a successful create_job call."""
     mock_batch_api.list_namespaced_job.return_value = _jobs_list()
     mock_core_api.create_namespaced_service.return_value = MagicMock()
-    mock_batch_api.create_namespaced_job.return_value = MagicMock()
+    created = MagicMock()
+    created.metadata.uid = "job-uid-123"
+    mock_batch_api.create_namespaced_job.return_value = created
 
 
 def test_create_job_calls_batch_create(launcher, mock_batch_api, mock_core_api):
@@ -282,6 +284,22 @@ def test_create_job_creates_loadbalancer_service(
     _setup_create_job(launcher, mock_batch_api, mock_core_api)
     launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
     mock_core_api.create_namespaced_service.assert_called_once()
+
+
+def test_create_job_sets_service_owner_reference_to_job(
+    launcher, mock_batch_api, mock_core_api
+):
+    _setup_create_job(launcher, mock_batch_api, mock_core_api)
+    res = launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    refs = body.metadata.owner_references
+    assert refs and len(refs) == 1
+    ref = refs[0]
+    assert ref.kind == "Job"
+    assert ref.api_version == "batch/v1"
+    assert ref.name == res.job_name
+    assert ref.uid == "job-uid-123"
 
 
 def test_create_job_returns_launch_result_with_non_empty_id(
@@ -470,6 +488,7 @@ def test_ensure_loadbalancer_service_merges_shared_lb_annotations_json_over_base
         labels={"k": "v"},
         launch_id="lid",
         service_port=31000,
+        owner_references=None,
     )
 
     body = mock_core_api.create_namespaced_service.call_args[1]["body"]
@@ -487,6 +506,7 @@ def test_ensure_loadbalancer_service_sets_load_balancer_ip_only_when_configured(
         labels={"k": "v"},
         launch_id="lid",
         service_port=31000,
+        owner_references=None,
     )
 
     body = mock_core_api.create_namespaced_service.call_args[1]["body"]
@@ -503,6 +523,7 @@ def test_ensure_loadbalancer_service_does_not_set_load_balancer_ip_when_unset(
         labels={"k": "v"},
         launch_id="lid",
         service_port=31000,
+        owner_references=None,
     )
 
     body = mock_core_api.create_namespaced_service.call_args[1]["body"]
@@ -566,38 +587,6 @@ def test_get_launch_status_failed(launcher, mock_batch_api, mock_core_api):
     assert result["status"] == "Failed"
 
 
-def test_get_launch_status_cleans_up_service_on_succeeded(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(succeeded=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, svc=svc)
-    launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
-def test_get_launch_status_cleans_up_service_on_failed(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(failed=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, svc=svc)
-    launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
-def test_get_launch_status_ending_when_deletion_timestamp_set(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(active=1, deletion_timestamp="2026-01-01T00:00:00Z")
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, pods=["pod-1"], svc=svc)
-    result = launcher.get_launch_status(launch_id="test-id")
-    assert result["status"] == "Ending"
-    # Service should be cleaned up while ending.
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
 def test_get_launch_status_returns_lb_urls_when_ingress_has_ip(
     launcher, mock_batch_api, mock_core_api
 ):
@@ -652,18 +641,6 @@ def test_get_launch_status_includes_pod_name(launcher, mock_batch_api, mock_core
     _setup_status(mock_batch_api, mock_core_api, job=job, pods=["my-pod-xyz"])
     result = launcher.get_launch_status(launch_id="test-id")
     assert result["podName"] == "my-pod-xyz"
-
-
-def test_get_launch_status_cleans_up_service_when_pod_gone(
-    launcher, mock_batch_api, mock_core_api
-):
-    # Running job but no pod — service should be cleaned up
-    job = _make_job(active=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, pods=[], svc=svc)
-    result = launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-    assert result["access"]["urls"] == []
 
 
 def test_get_launch_status_access_pending_when_no_urls(
