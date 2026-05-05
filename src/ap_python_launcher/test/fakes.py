@@ -133,9 +133,11 @@ class FakeKubeLauncher:
         job = self.__class__._jobs[launch_id]
         port = job.get("service_port", self.lb_port)
 
-        # If deletion has been requested, surface that explicitly.
+        # If termination has been requested, surface that explicitly.
         if job.get("deleting") is True:
             status, urls, access_status = "Ending", [], "Pending"
+        elif job.get("ended") is True:
+            status, urls, access_status = "Succeeded", [], "Pending"
         else:
             job["poll_count"] += 1
             count = job["poll_count"]
@@ -169,7 +171,7 @@ class FakeKubeLauncher:
         }
 
     def delete_job(self, *, launch_id: str) -> dict:
-        # Simulate async-ish deletion latency so the UI polling is visible in mock mode.
+        # Simulate async-ish termination latency so the UI polling is visible in mock mode.
         # Mark the job as "deleting" immediately so GET status can return "Ending".
         if launch_id not in self.__class__._jobs:
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
@@ -177,5 +179,6 @@ class FakeKubeLauncher:
         self.__class__._jobs[launch_id]["deleting"] = True
         time.sleep(2.5)
 
-        job = self.__class__._jobs.pop(launch_id)
+        job = self.__class__._jobs[launch_id]
+        job["ended"] = True
         return {"launchId": launch_id, "deleted": True, "jobName": job["job_name"]}

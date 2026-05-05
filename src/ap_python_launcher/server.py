@@ -159,7 +159,7 @@ def create_app() -> FastAPI:
 
     @app.delete("/launch/{launch_id}")
     def delete_launch(launch_id: str) -> dict:
-        return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
+        return _make_kube_launcher(cfg).end_job(launch_id=launch_id)
 
     static_dir = Path(__file__).parent / "static"
     if static_dir.exists():

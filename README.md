@@ -15,7 +15,7 @@ The per-launch Service is created with an `ownerReference` pointing at the Job. 
 ## Run locally
 
 ```bash
-uv sync
+make install
 make dev PORT=8080
 ```
 
@@ -64,29 +64,21 @@ Note: the Flutter dev server will not automatically proxy API calls to the FastA
 
 ## Prod Docker workflow
 
+Use the Makefile targets so the image tag matches [`Makefile`](Makefile).
+
 **Build:**
 
 ```bash
-docker build -t ap-python-launcher .
+make docker-prod-build
 ```
 
-**Run:**
+**Run (mock Harbor + mock Kubernetes):**
 
 ```bash
-docker run --rm -p 8080:8000 ap-python-launcher
+make docker-prod-run PORT=8080
 ```
 
 Then open: `http://localhost:8080/`
-
-Pass environment variables with `-e`:
-
-```bash
-docker run --rm -p 8080:8000 \
-  -e AP_HARBOR_USERNAME=myuser \
-  -e AP_HARBOR_PASSWORD=mypassword \
-  -e AP_KUBECONFIG="$(cat /home/chowingt/.kube/config)" \
-  ap-python-launcher
-```
 
 ### Dev Docker workflow
 
@@ -95,14 +87,14 @@ Prereqs:
 - MetalLB installed in the cluster
 - A MetalLB IP pool configured (see [`manifests/metallb_ip_pool.yaml`](manifests/metallb_ip_pool.yaml))
 
-Use [`Dockerfile.dev`](Dockerfile.dev) together with [`make docker-dev`](Makefile) for local Minikube + MetalLB testing.
+Use [`Dockerfile.dev`](Dockerfile.dev) together with [`make docker-dev-run`](Makefile) for local Minikube + MetalLB testing.
 
 For fake-Harbor + real-Kubernetes testing, a simple launchable image is provided in [`docker/test-app/Dockerfile`](docker/test-app/Dockerfile).
 
 Build and load all fake Harbor images into Minikube with:
 
 ```bash
-make minikube-load-test-images
+make minikube-load
 ```
 
 Then run the launcher with [`AP_MOCK_HARBOR`](README.md:117) enabled and [`AP_MOCK_KUBE`](README.md:118) unset so the fake Harbor catalog resolves to the real images now present in Minikube.
@@ -126,7 +118,7 @@ Then run the launcher with [`AP_MOCK_HARBOR`](README.md:117) enabled and [`AP_MO
 4. Run:
 
 ```bash
-make docker-dev
+make docker-dev-run
 ```
 
 This target:
