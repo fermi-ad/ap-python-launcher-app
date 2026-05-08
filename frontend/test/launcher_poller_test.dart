@@ -32,7 +32,7 @@ void main() {
       );
       expect(
         rowStates['ap-python/foo:latest']?.statusOverride,
-        '⚠️ Status unavailable',
+        'Status unavailable',
       );
 
       poller.dispose();

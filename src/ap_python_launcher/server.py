@@ -9,6 +9,7 @@ from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from .config import WebConfig, load_web_config
 from .discovery import HarborClient
@@ -65,11 +66,64 @@ class StripPrefixMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class StaticCacheControlMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, enabled: bool):
+        super().__init__(app)
+        self._enabled = enabled
+
+    async def dispatch(self, request: Request, call_next):
+        resp: Response = await call_next(request)
+        if not self._enabled:
+            return resp
+
+        path = request.scope.get("path") or ""
+
+        # app shell/entrypoints: cache allowed but must revalidate.
+        # stable assets: long-lived immutable cache.
+        if path == "/" or path.endswith("/index.html"):
+            resp.headers["Cache-Control"] = (
+                "no-cache, must-revalidate, proxy-revalidate"
+            )
+            resp.headers["Expires"] = "0"
+            return resp
+
+        if path.endswith((".html", ".js", ".mjs", ".wasm", ".json")):
+            resp.headers["Cache-Control"] = (
+                "no-cache, must-revalidate, proxy-revalidate"
+            )
+            resp.headers["Expires"] = "0"
+            return resp
+
+        if path.endswith(
+            (
+                ".css",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".ico",
+                ".svg",
+                ".woff",
+                ".woff2",
+                ".ttf",
+                ".eot",
+            )
+        ):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return resp
+
+        return resp
+
+
 def create_app() -> FastAPI:
     cfg = load_web_config()
 
     app = FastAPI(title="ap-python-launcher", version="0.1.0")
     app.add_middleware(StripPrefixMiddleware)
+    app.add_middleware(
+        StaticCacheControlMiddleware,
+        enabled=_env_flag("AP_STATIC_CACHE_CONTROL"),
+    )
 
     @app.get("/healthz")
     def healthz() -> dict:
