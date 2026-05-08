@@ -40,22 +40,22 @@ lint: ## Run ruff + flutter analyze
 
 build-frontend: ## Build Flutter web frontend into ap_python_launcher/static/
 	cd frontend && $(FVM)flutter pub get
-	cd frontend && $(FVM)flutter build web --release --wasm
+	cd frontend && $(FVM)flutter build web --release --wasm --no-web-resources-cdn
 	rm -rf src/ap_python_launcher/static/*
 	cp -r frontend/build/web/. src/ap_python_launcher/static/
 
 build-mock: build-frontend mock ## Build frontend then run mock server
 
-docker-prod-build: build-frontend ## Build the Docker image
+docker-prod-build: ## Build the Docker image
 	docker build -t $(IMAGE) .
 
 docker-prod-run: ## Run the Docker image locally with fake Harbor and fake Kubernetes
 	docker run --rm -p $(PORT):8000 -e AP_MOCK_HARBOR=true -e AP_MOCK_KUBE=true $(IMAGE)
 
-docker-dev-build: ## Build the dev Docker image
+docker-dev-build: build-frontend ## Build the dev Docker image
 	docker build -f Dockerfile.dev -t $(DEV_DOCKER_IMAGE) .
 
-docker-dev-run: docker-dev-build ## Run the dev Docker image with env-file and mounted kubeconfig
+docker-dev-run: ## Run the dev Docker image with env-file and mounted kubeconfig
 	docker run --rm -it --network=host \
 		-p $(PORT):8000 \
 		--env-file $(ENV_FILE) \

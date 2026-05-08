@@ -356,7 +356,7 @@ class ConnectButton extends StatelessWidget {
   }
 }
 
-/// Displays a monospace panel showing the raw JSON of the latest launch status.
+/// Displays a panel showing the raw JSON of the latest launch status.
 class LaunchStatusPanel extends StatelessWidget {
   /// Creates a [LaunchStatusPanel] with the given [text].
   const LaunchStatusPanel({required this.text, super.key});
@@ -366,36 +366,6 @@ class LaunchStatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monoStyle =
-        Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontFamily: 'RobotoMono',
-          fontFamilyFallback: const [
-            'ui-monospace',
-            'SFMono-Regular',
-            'Menlo',
-            'Monaco',
-            'Consolas',
-            'Liberation Mono',
-            'Courier New',
-            'monospace',
-          ],
-          height: 1.25,
-        ) ??
-        const TextStyle(
-          fontFamily: 'RobotoMono',
-          fontFamilyFallback: [
-            'ui-monospace',
-            'SFMono-Regular',
-            'Menlo',
-            'Monaco',
-            'Consolas',
-            'Liberation Mono',
-            'Courier New',
-            'monospace',
-          ],
-          height: 1.25,
-        );
-
     final tokens = context.bison;
 
     return Container(
@@ -405,7 +375,7 @@ class LaunchStatusPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: tokens.theme.borderPlain),
       ),
-      child: SelectableText(text, style: monoStyle),
+      child: SelectableText(text),
     );
   }
 }
