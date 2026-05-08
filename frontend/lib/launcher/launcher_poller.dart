@@ -117,7 +117,7 @@ class LauncherPoller {
           tracked.tag,
           const RowState(
             kind: RowStateKind.statusUnavailable,
-            statusOverride: '⚠️ Status unavailable',
+            statusOverride: 'Status unavailable',
           ),
         );
       }

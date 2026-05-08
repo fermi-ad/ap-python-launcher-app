@@ -375,7 +375,7 @@ class LaunchStatusPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: tokens.theme.borderPlain),
       ),
-      child: SelectableText(text),
+      child: SelectableText(text, style: const TextStyle(color: Colors.white)),
     );
   }
 }

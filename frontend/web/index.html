@@ -11,16 +11,6 @@
 
   <title>AP Python Launcher</title>
   <link rel="manifest" href="manifest.json">
-
-  <style>
-    @font-face {
-      font-family: "RobotoMono";
-      src: local("Roboto Mono"), local("RobotoMono"), local("Noto Sans Mono"),
-        local("SF Mono"), local("Menlo"), local("Consolas"), local("Liberation Mono"),
-        local("Courier New");
-      font-display: swap;
-    }
-  </style>
 </head>
 
 <body>
@@ -32,6 +22,13 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Disable CanvasKit downloadable font fallback (defaults to fonts.gstatic.com).
+    window.flutterConfiguration = {
+      canvasKitBaseUrl: "canvaskit/",
+      fontFallbackBaseUrl: "",
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 
