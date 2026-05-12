@@ -7,7 +7,7 @@ WORKDIR /build
 COPY frontend/ /build/frontend/
 RUN cd /build/frontend \
   && flutter pub get \
-  && flutter build web --release --wasm --no-web-resources-cdn
+  && flutter build web --release --wasm --no-web-resources-cdn --pwa-strategy=none
 
 # --- Stage 2: Python runtime ---
 FROM python:3.12-slim
