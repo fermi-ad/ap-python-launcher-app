@@ -9,14 +9,19 @@ from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from .config import WebConfig, load_web_config
 from .discovery import HarborClient
 from .launch import KubeLauncher, LaunchLimitExceededError
 
 
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").lower() in ("1", "true", "yes")
+
+
 def _make_harbor_client(cfg: WebConfig) -> HarborClient:
-    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+    if _env_flag("AP_MOCK_HARBOR"):
         from .test.fakes import FakeHarborClient
 
         return FakeHarborClient()  # type: ignore[return-value]
@@ -29,16 +34,21 @@ def _make_harbor_client(cfg: WebConfig) -> HarborClient:
 
 
 def _make_kube_launcher(cfg: WebConfig) -> KubeLauncher:
-    if os.environ.get("AP_MOCK_MODE", "").lower() in ("1", "true", "yes"):
+    if _env_flag("AP_MOCK_KUBE"):
         from .test.fakes import FakeKubeLauncher
 
         return FakeKubeLauncher(namespace=cfg.workload_namespace)  # type: ignore[return-value]
     return KubeLauncher(
         namespace=cfg.workload_namespace,
         kubeconfig_content=cfg.kubeconfig,
+        kubeconfig_path=cfg.kubeconfig_path,
         app_target_port=cfg.app_target_port,
         lb_port=cfg.lb_port,
         lb_annotations_json=cfg.lb_annotations_json,
+        shared_lb_ip=cfg.shared_lb_ip,
+        shared_lb_annotations_json=cfg.shared_lb_annotations_json,
+        shared_lb_port_range_start=cfg.shared_lb_port_range_start,
+        shared_lb_port_range_end=cfg.shared_lb_port_range_end,
     )
 
 
@@ -56,11 +66,64 @@ class StripPrefixMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class StaticCacheControlMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, enabled: bool):
+        super().__init__(app)
+        self._enabled = enabled
+
+    async def dispatch(self, request: Request, call_next):
+        resp: Response = await call_next(request)
+        if not self._enabled:
+            return resp
+
+        path = request.scope.get("path") or ""
+
+        # app shell/entrypoints: cache allowed but must revalidate.
+        # stable assets: long-lived immutable cache.
+        if path == "/" or path.endswith("/index.html"):
+            resp.headers["Cache-Control"] = (
+                "no-cache, must-revalidate, proxy-revalidate"
+            )
+            resp.headers["Expires"] = "0"
+            return resp
+
+        if path.endswith((".html", ".js", ".mjs", ".wasm", ".json")):
+            resp.headers["Cache-Control"] = (
+                "no-cache, must-revalidate, proxy-revalidate"
+            )
+            resp.headers["Expires"] = "0"
+            return resp
+
+        if path.endswith(
+            (
+                ".css",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".ico",
+                ".svg",
+                ".woff",
+                ".woff2",
+                ".ttf",
+                ".eot",
+            )
+        ):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return resp
+
+        return resp
+
+
 def create_app() -> FastAPI:
     cfg = load_web_config()
 
     app = FastAPI(title="ap-python-launcher", version="0.1.0")
     app.add_middleware(StripPrefixMiddleware)
+    app.add_middleware(
+        StaticCacheControlMiddleware,
+        enabled=_env_flag("AP_STATIC_CACHE_CONTROL"),
+    )
 
     @app.get("/healthz")
     def healthz() -> dict:
@@ -150,7 +213,7 @@ def create_app() -> FastAPI:
 
     @app.delete("/launch/{launch_id}")
     def delete_launch(launch_id: str) -> dict:
-        return _make_kube_launcher(cfg).delete_job(launch_id=launch_id)
+        return _make_kube_launcher(cfg).end_job(launch_id=launch_id)
 
     static_dir = Path(__file__).parent / "static"
     if static_dir.exists():

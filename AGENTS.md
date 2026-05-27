@@ -6,4 +6,4 @@
 
   - When making code changes, do **not** add comments that only exist to explain context about why the change was made, mention details about an earlier version of the code, or implicitly compare the current state to the previous state.
   - Use fvm when running Flutter commands. If you don't have access to the fvm command, run Flutter with .fvm/flutter_sdk/bin/flutter instead.
-  - Use python3 when running python commands
+  - This project uses uv for Python package management. Use uv commands instead of pip. When running Python commands, use the Python executable at .venv/bin/python, and prepend PYTHONPATH=./src to your command.

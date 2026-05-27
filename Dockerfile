@@ -7,7 +7,7 @@ WORKDIR /build
 COPY frontend/ /build/frontend/
 RUN cd /build/frontend \
   && flutter pub get \
-  && flutter build web --release --wasm
+  && flutter build web --release --wasm --no-web-resources-cdn --pwa-strategy=none
 
 # --- Stage 2: build Rust backend ---
 FROM rust:1.88-slim AS rust-builder

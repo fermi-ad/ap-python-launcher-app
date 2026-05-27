@@ -267,7 +267,9 @@ def _setup_create_job(launcher, mock_batch_api, mock_core_api):
     """Set up mocks for a successful create_job call."""
     mock_batch_api.list_namespaced_job.return_value = _jobs_list()
     mock_core_api.create_namespaced_service.return_value = MagicMock()
-    mock_batch_api.create_namespaced_job.return_value = MagicMock()
+    created = MagicMock()
+    created.metadata.uid = "job-uid-123"
+    mock_batch_api.create_namespaced_job.return_value = created
 
 
 def test_create_job_calls_batch_create(launcher, mock_batch_api, mock_core_api):
@@ -282,6 +284,22 @@ def test_create_job_creates_loadbalancer_service(
     _setup_create_job(launcher, mock_batch_api, mock_core_api)
     launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
     mock_core_api.create_namespaced_service.assert_called_once()
+
+
+def test_create_job_sets_service_owner_reference_to_job(
+    launcher, mock_batch_api, mock_core_api
+):
+    _setup_create_job(launcher, mock_batch_api, mock_core_api)
+    res = launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    refs = body.metadata.owner_references
+    assert refs and len(refs) == 1
+    ref = refs[0]
+    assert ref.kind == "Job"
+    assert ref.api_version == "batch/v1"
+    assert ref.name == res.job_name
+    assert ref.uid == "job-uid-123"
 
 
 def test_create_job_returns_launch_result_with_non_empty_id(
@@ -332,6 +350,184 @@ def test_create_job_reraises_non_409_api_exception(
     mock_core_api.create_namespaced_service.side_effect = error
     with pytest.raises(ApiException):
         launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+
+# ---------------------------------------------------------------------------
+# shared LB discovery / allocation
+# ---------------------------------------------------------------------------
+
+
+def _svc_with_lb_ip(
+    ip: str | None,
+    ports: list[int] | None = None,
+    *,
+    status_ingress_ip: str | None = None,
+):
+    svc = MagicMock()
+    svc.spec.load_balancer_ip = ip
+    svc.spec.ports = [MagicMock(port=p) for p in (ports or [])]
+    if status_ingress_ip is not None:
+        ingress = MagicMock()
+        ingress.ip = status_ingress_ip
+        svc.status.load_balancer.ingress = [ingress]
+    return svc
+
+
+def test_get_canonical_shared_lb_ip_prefers_configured_ip(launcher, mock_core_api):
+    launcher.shared_lb_ip = "10.0.0.9"
+    mock_core_api.list_namespaced_service.return_value = _svc_list(
+        _svc_with_lb_ip("10.0.0.1"),
+        _svc_with_lb_ip("10.0.0.2"),
+    )
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.9"
+
+
+def test_get_canonical_shared_lb_ip_returns_none_when_no_services(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+    mock_core_api.list_namespaced_service.return_value = _svc_list()
+    assert launcher._get_canonical_shared_lb_ip() is None
+
+
+def test_get_canonical_shared_lb_ip_uses_status_ingress_when_spec_ip_missing(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    from datetime import datetime, timezone
+
+    s1 = _svc_with_lb_ip(None, status_ingress_ip="10.0.0.20")
+    s1.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    s2 = _svc_with_lb_ip(None, status_ingress_ip="10.0.0.3")
+    s2.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2)
+
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.3"
+
+
+def test_get_canonical_shared_lb_ip_picks_oldest_service_creation_timestamp(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    from datetime import datetime, timezone
+
+    s1 = _svc_with_lb_ip("10.0.0.20")
+    s1.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    s2 = _svc_with_lb_ip("10.0.0.3")
+    s2.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    s3 = _svc_with_lb_ip("10.0.0.10")
+    s3.metadata.creation_timestamp = datetime(2026, 1, 3, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2, s3)
+
+    assert launcher._get_canonical_shared_lb_ip() == "10.0.0.3"
+
+
+def test_allocate_service_port_uses_only_ports_on_canonical_ip(
+    launcher, mock_core_api, mocker
+):
+    launcher.shared_lb_ip = None
+    launcher.shared_lb_port_range_start = 31000
+    launcher.shared_lb_port_range_end = 31002
+
+    # Two IPs exist; canonical is 10.0.0.20 (oldest Service). Only ports on canonical should be considered used.
+    from datetime import datetime, timezone
+
+    s_old = _svc_with_lb_ip("10.0.0.20", ports=[31000, 31001])
+    s_old.metadata.creation_timestamp = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+    s_new = _svc_with_lb_ip("10.0.0.10", ports=[31000])
+    s_new.metadata.creation_timestamp = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s_old, s_new)
+
+    # Make random deterministic for test.
+    mocker.patch(
+        "ap_python_launcher.launch.random.choice", side_effect=lambda xs: xs[0]
+    )
+
+    # Available on canonical: 31002 → should pick 31002.
+    assert launcher._allocate_service_port(launch_id="x") == 31002
+
+
+def test_create_job_raises_when_no_ports_available(
+    launcher, mock_batch_api, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.shared_lb_port_range_start = 31000
+    launcher.shared_lb_port_range_end = 31001
+
+    mock_batch_api.list_namespaced_job.return_value = _jobs_list()
+    mock_batch_api.create_namespaced_job.return_value = MagicMock()
+
+    s1 = _svc_with_lb_ip("10.0.0.9", ports=[31000])
+    s2 = _svc_with_lb_ip("10.0.0.9", ports=[31001])
+    mock_core_api.list_namespaced_service.return_value = _svc_list(s1, s2)
+
+    with pytest.raises(LaunchLimitExceededError, match=r"No free ports available"):
+        launcher.create_job(image="img:latest", repo="proj/app", tag="latest")
+
+    mock_core_api.create_namespaced_service.assert_not_called()
+
+
+def test_ensure_loadbalancer_service_merges_shared_lb_annotations_json_over_base(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+    launcher.lb_annotations_json = '{"a":"1"}'
+    launcher.shared_lb_annotations_json = '{"a":"2","b":"3"}'
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+        owner_references=None,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.metadata.annotations["a"] == "2"
+    assert body.metadata.annotations["b"] == "3"
+
+
+def test_ensure_loadbalancer_service_sets_load_balancer_ip_only_when_configured(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = "10.0.0.9"
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+        owner_references=None,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.spec.load_balancer_ip == "10.0.0.9"
+
+
+def test_ensure_loadbalancer_service_does_not_set_load_balancer_ip_when_unset(
+    launcher, mock_core_api
+):
+    launcher.shared_lb_ip = None
+
+    launcher._ensure_loadbalancer_service(
+        service_name="svc",
+        labels={"k": "v"},
+        launch_id="lid",
+        service_port=31000,
+        owner_references=None,
+    )
+
+    body = mock_core_api.create_namespaced_service.call_args[1]["body"]
+    assert body.spec.load_balancer_ip is None
 
 
 # ---------------------------------------------------------------------------
@@ -391,38 +587,6 @@ def test_get_launch_status_failed(launcher, mock_batch_api, mock_core_api):
     assert result["status"] == "Failed"
 
 
-def test_get_launch_status_cleans_up_service_on_succeeded(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(succeeded=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, svc=svc)
-    launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
-def test_get_launch_status_cleans_up_service_on_failed(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(failed=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, svc=svc)
-    launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
-def test_get_launch_status_ending_when_deletion_timestamp_set(
-    launcher, mock_batch_api, mock_core_api
-):
-    job = _make_job(active=1, deletion_timestamp="2026-01-01T00:00:00Z")
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, pods=["pod-1"], svc=svc)
-    result = launcher.get_launch_status(launch_id="test-id")
-    assert result["status"] == "Ending"
-    # Service should be cleaned up while ending.
-    mock_core_api.delete_namespaced_service.assert_called()
-
-
 def test_get_launch_status_returns_lb_urls_when_ingress_has_ip(
     launcher, mock_batch_api, mock_core_api
 ):
@@ -477,18 +641,6 @@ def test_get_launch_status_includes_pod_name(launcher, mock_batch_api, mock_core
     _setup_status(mock_batch_api, mock_core_api, job=job, pods=["my-pod-xyz"])
     result = launcher.get_launch_status(launch_id="test-id")
     assert result["podName"] == "my-pod-xyz"
-
-
-def test_get_launch_status_cleans_up_service_when_pod_gone(
-    launcher, mock_batch_api, mock_core_api
-):
-    # Running job but no pod — service should be cleaned up
-    job = _make_job(active=1)
-    svc = _service("my-svc")
-    _setup_status(mock_batch_api, mock_core_api, job=job, pods=[], svc=svc)
-    result = launcher.get_launch_status(launch_id="test-id")
-    mock_core_api.delete_namespaced_service.assert_called()
-    assert result["access"]["urls"] == []
 
 
 def test_get_launch_status_access_pending_when_no_urls(

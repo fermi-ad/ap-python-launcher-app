@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ap-python
+  labels:
+    app.kubernetes.io/name: ap-python
+    app.kubernetes.io/part-of: ap-python-launcher

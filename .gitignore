@@ -213,9 +213,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Configuration
-config.json
-
 # FVM Version Cache
 .fvm/
 
@@ -235,3 +232,6 @@ rust-backend/target/
 
 # AI agent plans
 plans/
+
+# Kubeconfig
+.kubeconfig

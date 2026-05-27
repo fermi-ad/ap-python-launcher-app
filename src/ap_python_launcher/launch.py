@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import random
 import tempfile
+from typing import NamedTuple
 import uuid
 
 from kubernetes import client, config
@@ -24,6 +26,7 @@ class LaunchResult:
     namespace: str
     job_name: str
     service_name: str
+    service_port: int
 
 
 def _now_utc() -> datetime:
@@ -36,19 +39,23 @@ class KubeLauncher:
         namespace: str,
         *,
         kubeconfig_content: str | None = None,
+        kubeconfig_path: str | None = None,
         app_target_port: int = 14500,
         lb_port: int = 80,
         lb_annotations_json: str | None = None,
+        shared_lb_ip: str | None = None,
+        shared_lb_annotations_json: str = '{"metallb.io/allow-shared-ip": "ap-python-launcher"}',
+        shared_lb_port_range_start: int = 30000,
+        shared_lb_port_range_end: int = 39999,
     ):
-        # Prefer explicitly-provided kubeconfig content (useful when running in-cluster
-        # but targeting a different cluster).
         if kubeconfig_content:
             with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
                 f.write(kubeconfig_content)
                 f.flush()
                 config.load_kube_config(config_file=f.name)
+        elif kubeconfig_path:
+            config.load_kube_config(config_file=kubeconfig_path)
         else:
-            # Prefer in-cluster config; fall back to default kubeconfig for local dev.
             try:
                 config.load_incluster_config()
             except Exception:
@@ -58,8 +65,104 @@ class KubeLauncher:
         self.app_target_port = app_target_port
         self.lb_port = lb_port
         self.lb_annotations_json = lb_annotations_json
+        self.shared_lb_ip = shared_lb_ip
+        self.shared_lb_annotations_json = shared_lb_annotations_json
+        self.shared_lb_port_range_start = shared_lb_port_range_start
+        self.shared_lb_port_range_end = shared_lb_port_range_end
         self.batch = client.BatchV1Api()
         self.core = client.CoreV1Api()
+
+    def _get_canonical_shared_lb_ip(self) -> str | None:
+        if self.shared_lb_ip:
+            return self.shared_lb_ip
+
+        selector = "app.kubernetes.io/managed-by=ap-python-launcher"
+        services = self.core.list_namespaced_service(
+            namespace=self.namespace, label_selector=selector
+        )
+
+        class _Candidate(NamedTuple):
+            timestamp: datetime
+            ip: str
+
+        candidates: list[_Candidate] = []
+
+        for service in services.items:
+            meta = getattr(service, "metadata", None)
+
+            spec = getattr(service, "spec", None)
+            status = getattr(service, "status", None)
+
+            spec_ip = getattr(spec, "load_balancer_ip", None) if spec else None
+            ingress = (
+                getattr(getattr(status, "load_balancer", None), "ingress", None)
+                if status
+                else None
+            )
+            status_ip = None
+            if ingress:
+                first = ingress[0]
+                status_ip = getattr(first, "ip", None) or getattr(
+                    first, "hostname", None
+                )
+
+            ip = spec_ip if isinstance(spec_ip, str) and spec_ip else None
+            if not ip and isinstance(status_ip, str) and status_ip:
+                ip = status_ip
+            if not ip:
+                continue
+
+            timestamp = getattr(meta, "creation_timestamp", None) if meta else None
+            if not isinstance(timestamp, datetime):
+                continue
+
+            candidates.append(_Candidate(timestamp=timestamp, ip=ip))
+
+        if not candidates:
+            return None
+
+        try:
+            return min(candidates, key=lambda x: x.timestamp).ip
+        except TypeError:
+            # Some tests use MagicMocks for timestamps; fall back to first candidate.
+            return candidates[0].ip
+
+    def _allocate_service_port(self, *, launch_id: str) -> int:
+        shared_ip = self._get_canonical_shared_lb_ip()
+        filter_by_ip = shared_ip is not None
+
+        start = self.shared_lb_port_range_start
+        end = self.shared_lb_port_range_end
+        if start <= 0 or end <= 0 or end < start:
+            raise ValueError(
+                "Invalid shared LB port range; expected AP_SHARED_LB_PORT_RANGE_START <= AP_SHARED_LB_PORT_RANGE_END and both > 0"
+            )
+
+        selector = "app.kubernetes.io/managed-by=ap-python-launcher"
+        services = self.core.list_namespaced_service(
+            namespace=self.namespace, label_selector=selector
+        )
+
+        used: set[int] = set()
+        for service in services.items:
+            spec = getattr(service, "spec", None)
+            if not spec:
+                continue
+            if filter_by_ip and getattr(spec, "load_balancer_ip", None) != shared_ip:
+                continue
+            ports = getattr(spec, "ports", None) or []
+            for p in ports:
+                port = getattr(p, "port", None)
+                if isinstance(port, int):
+                    used.add(port)
+
+        candidates = [p for p in range(start, end + 1) if p not in used]
+        if not candidates:
+            raise LaunchLimitExceededError(
+                f"No free ports available in range {start}-{end} for shared IP {shared_ip or '<dynamic>'}"
+            )
+
+        return random.choice(candidates)
 
     def _count_active_jobs(self, *, repo: str | None = None) -> int:
         selector = "app.kubernetes.io/managed-by=ap-python-launcher"
@@ -181,12 +284,34 @@ class KubeLauncher:
             ),
         )
 
-        self.batch.create_namespaced_job(namespace=self.namespace, body=job)
+        created_job = self.batch.create_namespaced_job(
+            namespace=self.namespace, body=job
+        )
 
         # Create per-launch access point.
         service_name = self._service_name_for_launch(repo=repo, launch_id=launch_id)
+        service_port = self._allocate_service_port(launch_id=launch_id)
+
+        job_uid = getattr(getattr(created_job, "metadata", None), "uid", None)
+        owner_refs = None
+        if isinstance(job_uid, str) and job_uid:
+            owner_refs = [
+                client.V1OwnerReference(
+                    api_version="batch/v1",
+                    kind="Job",
+                    name=job_name,
+                    uid=job_uid,
+                    block_owner_deletion=False,
+                    controller=False,
+                )
+            ]
+
         self._ensure_loadbalancer_service(
-            service_name=service_name, labels=labels, launch_id=launch_id
+            service_name=service_name,
+            labels=labels,
+            launch_id=launch_id,
+            service_port=service_port,
+            owner_references=owner_refs,
         )
 
         return LaunchResult(
@@ -194,30 +319,58 @@ class KubeLauncher:
             namespace=self.namespace,
             job_name=job_name,
             service_name=service_name,
+            service_port=service_port,
         )
 
     def _ensure_loadbalancer_service(
-        self, *, service_name: str, labels: dict[str, str], launch_id: str
+        self,
+        *,
+        service_name: str,
+        labels: dict[str, str],
+        launch_id: str,
+        service_port: int,
+        owner_references: list[client.V1OwnerReference] | None = None,
     ) -> None:
         selector = {"ap-python.fnal.gov/launch-id": launch_id}
         annotations = self._parse_lb_annotations()
 
+        try:
+            extra = json.loads(self.shared_lb_annotations_json)
+        except Exception as e:  # noqa: BLE001
+            raise ValueError(f"Invalid AP_SHARED_LB_ANNOTATIONS_JSON: {e}") from e
+        if not isinstance(extra, dict) or not all(
+            isinstance(k, str) and isinstance(val, str) for k, val in extra.items()
+        ):
+            raise ValueError(
+                "AP_SHARED_LB_ANNOTATIONS_JSON must be a JSON object of string->string"
+            )
+        annotations = {**annotations, **extra}
+
+        svc_spec = client.V1ServiceSpec(
+            type="LoadBalancer",
+            selector=selector,
+            ports=[
+                client.V1ServicePort(
+                    name="http",
+                    port=service_port,
+                    target_port=self.app_target_port,
+                    protocol="TCP",
+                )
+            ],
+            external_traffic_policy="Cluster",
+        )
+
+        if self.shared_lb_ip:
+            svc_spec.load_balancer_ip = self.shared_lb_ip
+
         svc = client.V1Service(
             metadata=client.V1ObjectMeta(
-                name=service_name, labels=labels, annotations=annotations
+                name=service_name,
+                labels=labels,
+                annotations=annotations,
+                owner_references=owner_references,
             ),
-            spec=client.V1ServiceSpec(
-                type="LoadBalancer",
-                selector=selector,
-                ports=[
-                    client.V1ServicePort(
-                        name="http",
-                        port=self.lb_port,
-                        target_port=self.app_target_port,
-                        protocol="TCP",
-                    )
-                ],
-            ),
+            spec=svc_spec,
         )
 
         try:
@@ -241,51 +394,41 @@ class KubeLauncher:
         if not ingress:
             return []
 
+        ports = getattr(getattr(svc, "spec", None), "ports", None) or []
+        service_port = None
+        if ports:
+            service_port = getattr(ports[0], "port", None)
+
         urls: list[str] = []
         for i in ingress:
             host = getattr(i, "hostname", None) or getattr(i, "ip", None)
             if not host:
                 continue
-            # Prefer http:// since this is raw LB access; TLS termination depends on infra.
-            urls.append(f"http://{host}:{self.lb_port}/")
+            port = service_port if isinstance(service_port, int) else self.lb_port
+            urls.append(f"http://{host}:{port}/")
         return urls
 
-    def _delete_service_for_launch(self, *, launch_id: str) -> bool:
-        svc = self._get_service(launch_id=launch_id)
-        if not svc:
-            return False
-        name = svc.metadata.name if svc.metadata and svc.metadata.name else None
-        if not name:
-            return False
-        try:
-            self.core.delete_namespaced_service(name=name, namespace=self.namespace)
-        except ApiException as e:
-            if getattr(e, "status", None) != 404:
-                raise
-        return True
-
-    def delete_job(self, *, launch_id: str) -> dict:
+    def end_job(self, *, launch_id: str) -> dict:
         selector = f"ap-python.fnal.gov/launch-id={launch_id}"
         jobs = self.batch.list_namespaced_job(
             namespace=self.namespace, label_selector=selector
         )
         if not jobs.items:
-            self._delete_service_for_launch(launch_id=launch_id)
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
 
         job = jobs.items[0]
         job_name = job.metadata.name
+
         try:
-            self.batch.delete_namespaced_job(
+            self.batch.patch_namespaced_job(
                 name=job_name,
                 namespace=self.namespace,
-                body=client.V1DeleteOptions(propagation_policy="Foreground"),
+                body={"spec": {"activeDeadlineSeconds": 1}},
             )
         except ApiException as e:
             if getattr(e, "status", None) != 404:
                 raise
 
-        self._delete_service_for_launch(launch_id=launch_id)
         return {"launchId": launch_id, "deleted": True, "jobName": job_name}
 
     def get_launch_status(self, *, launch_id: str) -> dict:
@@ -295,8 +438,6 @@ class KubeLauncher:
             namespace=self.namespace, label_selector=selector
         )
         if not jobs.items:
-            # Best-effort cleanup
-            self._delete_service_for_launch(launch_id=launch_id)
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = jobs.items[0]
@@ -338,14 +479,6 @@ class KubeLauncher:
         svc = self._get_service(launch_id=launch_id)
         service_name = svc.metadata.name if svc and svc.metadata else None
         urls = self._get_service_urls(svc) if svc else []
-
-        # Cleanup service when job is no longer running, is being deleted, or pod disappeared.
-        if status in {"Succeeded", "Failed", "Ending"} or pod_name is None:
-            self._delete_service_for_launch(launch_id=launch_id)
-            svc = None
-            service_name = None
-            urls = []
-            pod_ready = False
 
         return {
             "launchId": launch_id,

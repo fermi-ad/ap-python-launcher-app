@@ -1,7 +1,7 @@
 """Concrete in-memory fakes for HarborClient and KubeLauncher.
 
 Shared by:
-  - AP_MOCK_MODE server: run `AP_MOCK_MODE=true uvicorn ...` for local UI dev
+  - AP_MOCK_HARBOR / AP_MOCK_KUBE server modes for local UI dev
   - Unit tests: inject via fixtures instead of MagicMock where fine-grained
     control (call_args, side_effect) is not required
 """
@@ -16,9 +16,9 @@ from ..launch import LaunchResult
 
 
 DEFAULT_REPOS = [
-    HarborRepo("ap-python/demo-app", "1", ("1", "latest", "edge")),
-    HarborRepo("ap-python/analysis-tool", "2", ("2", "latest", "edge")),
-    HarborRepo("ap-python/jupyter-env", "15", ("15", "latest", "edge")),
+    HarborRepo("ap-python/test-app-a", "latest", ("latest",)),
+    HarborRepo("ap-python/test-app-b", "latest", ("latest",)),
+    HarborRepo("ap-python/test-app-c", "latest", ("latest",)),
 ]
 
 
@@ -66,9 +66,17 @@ class FakeKubeLauncher:
         app_target_port: int = 14500,
         lb_port: int = 80,
         lb_annotations_json: str | None = None,
+        shared_lb_ip: str | None = None,
+        shared_lb_annotations_json: str | None = None,
+        shared_lb_port_range_start: int = 30000,
+        shared_lb_port_range_end: int = 39999,
     ):
         self.namespace = namespace
         self.lb_port = lb_port
+        self.shared_lb_ip = shared_lb_ip
+        self.shared_lb_annotations_json = shared_lb_annotations_json
+        self.shared_lb_port_range_start = shared_lb_port_range_start
+        self.shared_lb_port_range_end = shared_lb_port_range_end
         # Records kwargs from the most recent create_job call; useful in tests.
         self.last_create_job_kwargs: dict = {}
 
@@ -95,12 +103,19 @@ class FakeKubeLauncher:
         short = launch_id.split("-")[0]
         job_name = f"fake-{safe_repo}-{short}"
         service_name = f"fake-svc-{short}"
+
+        if self.shared_lb_ip:
+            service_port = self.shared_lb_port_range_start
+        else:
+            service_port = self.lb_port
+
         self.__class__._jobs[launch_id] = {
             "repo": repo,
             "tag": tag,
             "image": image,
             "job_name": job_name,
             "service_name": service_name,
+            "service_port": service_port,
             "poll_count": 0,
         }
         return LaunchResult(
@@ -108,6 +123,7 @@ class FakeKubeLauncher:
             namespace=self.namespace,
             job_name=job_name,
             service_name=service_name,
+            service_port=service_port,
         )
 
     def get_launch_status(self, *, launch_id: str) -> dict:
@@ -115,10 +131,13 @@ class FakeKubeLauncher:
             return {"launchId": launch_id, "status": "NotFound"}
 
         job = self.__class__._jobs[launch_id]
+        port = job.get("service_port", self.lb_port)
 
-        # If deletion has been requested, surface that explicitly.
+        # If termination has been requested, surface that explicitly.
         if job.get("deleting") is True:
             status, urls, access_status = "Ending", [], "Pending"
+        elif job.get("ended") is True:
+            status, urls, access_status = "Succeeded", [], "Pending"
         else:
             job["poll_count"] += 1
             count = job["poll_count"]
@@ -129,11 +148,11 @@ class FakeKubeLauncher:
                 status, urls, access_status = "Running", [], "Pending"
             elif count <= 3:
                 status = "Running"
-                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                urls = [f"http://fake-lb.example.com:{port}/"]
                 access_status = "Pending"
             else:
                 status = "Running"
-                urls = [f"http://fake-lb.example.com:{self.lb_port}/"]
+                urls = [f"http://fake-lb.example.com:{port}/"]
                 access_status = "Ready"
 
         return {
@@ -152,7 +171,7 @@ class FakeKubeLauncher:
         }
 
     def delete_job(self, *, launch_id: str) -> dict:
-        # Simulate async-ish deletion latency so the UI polling is visible in mock mode.
+        # Simulate async-ish termination latency so the UI polling is visible in mock mode.
         # Mark the job as "deleting" immediately so GET status can return "Ending".
         if launch_id not in self.__class__._jobs:
             return {"launchId": launch_id, "deleted": False, "reason": "NotFound"}
@@ -160,5 +179,6 @@ class FakeKubeLauncher:
         self.__class__._jobs[launch_id]["deleting"] = True
         time.sleep(2.5)
 
-        job = self.__class__._jobs.pop(launch_id)
+        job = self.__class__._jobs[launch_id]
+        job["ended"] = True
         return {"launchId": launch_id, "deleted": True, "jobName": job["job_name"]}
