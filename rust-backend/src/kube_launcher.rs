@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -28,6 +28,7 @@ pub struct LaunchResult {
     pub namespace: String,
     pub job_name: String,
     pub service_name: String,
+    pub service_port: i32,
 }
 
 #[derive(Clone)]
@@ -36,6 +37,10 @@ pub struct KubeLauncher {
     app_target_port: i32,
     lb_port: i32,
     lb_annotations_json: Option<String>,
+    shared_lb_ip: Option<String>,
+    shared_lb_annotations_json: String,
+    shared_lb_port_range_start: i32,
+    shared_lb_port_range_end: i32,
     client: Client,
 }
 
@@ -43,13 +48,18 @@ impl KubeLauncher {
     pub async fn new(
         namespace: String,
         kubeconfig_content: Option<String>,
+        kubeconfig_path: Option<String>,
         app_target_port: u16,
         lb_port: u16,
         lb_annotations_json: Option<String>,
+        shared_lb_ip: Option<String>,
+        shared_lb_annotations_json: String,
+        shared_lb_port_range_start: u16,
+        shared_lb_port_range_end: u16,
     ) -> anyhow::Result<Self> {
-        if kubeconfig_content.is_some() {
+        if kubeconfig_content.is_some() || kubeconfig_path.is_some() {
             tracing::warn!(
-                "AP_KUBECONFIG content provided but not yet supported in Rust backend; using default kube config resolution"
+                "AP_KUBECONFIG/AP_KUBECONFIG_PATH provided but not yet supported in Rust backend; using default kube config resolution"
             );
         }
 
@@ -60,6 +70,10 @@ impl KubeLauncher {
             app_target_port: app_target_port as i32,
             lb_port: lb_port as i32,
             lb_annotations_json,
+            shared_lb_ip,
+            shared_lb_annotations_json,
+            shared_lb_port_range_start: shared_lb_port_range_start as i32,
+            shared_lb_port_range_end: shared_lb_port_range_end as i32,
             client,
         })
     }
@@ -183,6 +197,120 @@ impl KubeLauncher {
         Self::parse_lb_annotations_json(self.lb_annotations_json.as_deref())
     }
 
+    async fn get_canonical_shared_lb_ip(&self) -> anyhow::Result<Option<String>> {
+        if self.shared_lb_ip.is_some() {
+            return Ok(self.shared_lb_ip.clone());
+        }
+
+        let svc_api: Api<Service> = Api::namespaced(self.client.clone(), &self.namespace);
+        let selector = "app.kubernetes.io/managed-by=ap-python-launcher";
+        let svcs = svc_api
+            .list(&ListParams::default().labels(selector))
+            .await
+            .context("list services")?;
+
+        let mut candidates: Vec<(chrono::DateTime<Utc>, String)> = Vec::new();
+
+        for svc in svcs.items {
+            let meta = svc.metadata;
+            let spec = svc.spec;
+            let status = svc.status;
+
+            let mut ip: Option<String> = None;
+
+            if let Some(spec) = &spec {
+                if let Some(spec_ip) = &spec.load_balancer_ip {
+                    if !spec_ip.trim().is_empty() {
+                        ip = Some(spec_ip.clone());
+                    }
+                }
+            }
+
+            if ip.is_none() {
+                if let Some(status) = &status {
+                    if let Some(lb) = &status.load_balancer {
+                        if let Some(ing) = &lb.ingress {
+                            if let Some(first) = ing.first() {
+                                ip = first.ip.clone().or_else(|| first.hostname.clone());
+                            }
+                        }
+                    }
+                }
+            }
+
+            let Some(ip) = ip else { continue };
+            let Some(ts) = meta.creation_timestamp else {
+                continue;
+            };
+
+            candidates.push((ts.0, ip));
+        }
+
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
+        candidates.sort_by_key(|(ts, _)| *ts);
+        Ok(Some(candidates[0].1.clone()))
+    }
+
+    async fn allocate_service_port(&self) -> Result<i32, LaunchLimitExceededError> {
+        let shared_ip = self.get_canonical_shared_lb_ip().await.unwrap_or(None);
+        let filter_by_ip = shared_ip.is_some();
+
+        let start = self.shared_lb_port_range_start;
+        let end = self.shared_lb_port_range_end;
+        if start <= 0 || end <= 0 || end < start {
+            return Err(LaunchLimitExceededError(
+                "Invalid shared LB port range; expected AP_SHARED_LB_PORT_RANGE_START <= AP_SHARED_LB_PORT_RANGE_END and both > 0"
+                    .to_string(),
+            ));
+        }
+
+        let svc_api: Api<Service> = Api::namespaced(self.client.clone(), &self.namespace);
+        let selector = "app.kubernetes.io/managed-by=ap-python-launcher";
+        let svcs = match svc_api.list(&ListParams::default().labels(selector)).await {
+            Ok(v) => v,
+            Err(_) => return Ok(self.lb_port),
+        };
+
+        let mut used: BTreeSet<i32> = BTreeSet::new();
+        for svc in svcs.items {
+            if let Some(spec) = &svc.spec {
+                if filter_by_ip {
+                    if spec.load_balancer_ip.as_deref() != shared_ip.as_deref() {
+                        continue;
+                    }
+                }
+
+                if let Some(ports) = &spec.ports {
+                    for p in ports {
+                        used.insert(p.port);
+                    }
+                }
+            }
+        }
+
+        let mut candidates: Vec<i32> = Vec::new();
+        for p in start..=end {
+            if !used.contains(&p) {
+                candidates.push(p);
+            }
+        }
+
+        if candidates.is_empty() {
+            return Err(LaunchLimitExceededError(format!(
+                "No free ports available in range {}-{} for shared IP {}",
+                start,
+                end,
+                shared_ip.unwrap_or_else(|| "<dynamic>".to_string())
+            )));
+        }
+
+        let idx = (uuid::Uuid::new_v4().as_u128() % (candidates.len() as u128)) as usize;
+        Ok(candidates[idx])
+    }
+
     pub async fn create_job(
         &self,
         image: &str,
@@ -291,20 +419,43 @@ impl KubeLauncher {
             ..Default::default()
         };
 
-        job_api
+        let created_job = job_api
             .create(&PostParams::default(), &job)
             .await
             .context("create job")?;
 
         let service_name = self.service_name_for_launch(repo, &launch_id);
-        self.ensure_loadbalancer_service(&service_name, &labels, &launch_id)
-            .await?;
+        let service_port = self.allocate_service_port().await?;
+
+        let owner_references = created_job.metadata.uid.clone().map(|uid| {
+            vec![
+                k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference {
+                    api_version: "batch/v1".to_string(),
+                    kind: "Job".to_string(),
+                    name: job_name.clone(),
+                    uid,
+                    block_owner_deletion: Some(false),
+                    controller: Some(false),
+                    ..Default::default()
+                },
+            ]
+        });
+
+        self.ensure_loadbalancer_service(
+            &service_name,
+            &labels,
+            &launch_id,
+            service_port,
+            owner_references,
+        )
+        .await?;
 
         Ok(LaunchResult {
             launch_id: launch_id.clone(),
             namespace: self.namespace.clone(),
             job_name,
             service_name,
+            service_port,
         })
     }
 
@@ -313,10 +464,22 @@ impl KubeLauncher {
         service_name: &str,
         labels: &BTreeMap<String, String>,
         launch_id: &str,
+        service_port: i32,
+        owner_references: Option<
+            Vec<k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference>,
+        >,
     ) -> anyhow::Result<()> {
         let svc_api: Api<Service> = Api::namespaced(self.client.clone(), &self.namespace);
 
-        let annotations = self.parse_lb_annotations()?;
+        let mut annotations = self.parse_lb_annotations()?;
+        let extra = Self::parse_lb_annotations_json(Some(&self.shared_lb_annotations_json))
+            .with_context(|| {
+                format!(
+                    "Invalid AP_SHARED_LB_ANNOTATIONS_JSON: {}",
+                    self.shared_lb_annotations_json
+                )
+            })?;
+        annotations.extend(extra);
 
         let svc = Service {
             metadata: ObjectMeta {
@@ -327,6 +490,7 @@ impl KubeLauncher {
                 } else {
                     Some(annotations)
                 },
+                owner_references,
                 ..Default::default()
             },
             spec: Some(ServiceSpec {
@@ -337,7 +501,7 @@ impl KubeLauncher {
                 )])),
                 ports: Some(vec![ServicePort {
                     name: Some("http".to_string()),
-                    port: self.lb_port,
+                    port: service_port,
                     target_port: Some(
                         k8s_openapi::apimachinery::pkg::util::intstr::IntOrString::Int(
                             self.app_target_port,
@@ -346,6 +510,8 @@ impl KubeLauncher {
                     protocol: Some("TCP".to_string()),
                     ..Default::default()
                 }]),
+                external_traffic_policy: Some("Cluster".to_string()),
+                load_balancer_ip: self.shared_lb_ip.clone(),
                 ..Default::default()
             }),
             ..Default::default()

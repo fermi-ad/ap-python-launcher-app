@@ -90,9 +90,14 @@ async fn launch(
     let kl = KubeLauncher::new(
         state.cfg.workload_namespace.clone(),
         state.cfg.kubeconfig_content.clone(),
+        state.cfg.kubeconfig_path.clone(),
         state.cfg.app_target_port,
         state.cfg.lb_port,
         state.cfg.lb_annotations_json.clone(),
+        state.cfg.shared_lb_ip.clone(),
+        state.cfg.shared_lb_annotations_json.clone(),
+        state.cfg.shared_lb_port_range_start,
+        state.cfg.shared_lb_port_range_end,
     )
     .await?;
 
@@ -100,7 +105,10 @@ async fn launch(
         .create_job(&image, &m.repo, &m.tag, None)
         .await
         .map_err(|e| {
-            if e.to_string().contains("limit") {
+            if e.to_string().contains("Total active job limit")
+                || e.to_string().contains("Active job limit")
+                || e.to_string().contains("No free ports")
+            {
                 ApiError::TooManyRequests(e.to_string())
             } else {
                 ApiError::Anyhow(e)
@@ -133,9 +141,14 @@ async fn batch_launch_status(
     let kl = KubeLauncher::new(
         state.cfg.workload_namespace.clone(),
         state.cfg.kubeconfig_content.clone(),
+        state.cfg.kubeconfig_path.clone(),
         state.cfg.app_target_port,
         state.cfg.lb_port,
         state.cfg.lb_annotations_json.clone(),
+        state.cfg.shared_lb_ip.clone(),
+        state.cfg.shared_lb_annotations_json.clone(),
+        state.cfg.shared_lb_port_range_start,
+        state.cfg.shared_lb_port_range_end,
     )
     .await?;
 
@@ -154,9 +167,14 @@ async fn launch_status(
     let kl = KubeLauncher::new(
         state.cfg.workload_namespace.clone(),
         state.cfg.kubeconfig_content.clone(),
+        state.cfg.kubeconfig_path.clone(),
         state.cfg.app_target_port,
         state.cfg.lb_port,
         state.cfg.lb_annotations_json.clone(),
+        state.cfg.shared_lb_ip.clone(),
+        state.cfg.shared_lb_annotations_json.clone(),
+        state.cfg.shared_lb_port_range_start,
+        state.cfg.shared_lb_port_range_end,
     )
     .await?;
 
@@ -170,9 +188,14 @@ async fn delete_launch(
     let kl = KubeLauncher::new(
         state.cfg.workload_namespace.clone(),
         state.cfg.kubeconfig_content.clone(),
+        state.cfg.kubeconfig_path.clone(),
         state.cfg.app_target_port,
         state.cfg.lb_port,
         state.cfg.lb_annotations_json.clone(),
+        state.cfg.shared_lb_ip.clone(),
+        state.cfg.shared_lb_annotations_json.clone(),
+        state.cfg.shared_lb_port_range_start,
+        state.cfg.shared_lb_port_range_end,
     )
     .await?;
 
