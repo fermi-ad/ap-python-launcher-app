@@ -119,13 +119,11 @@ impl KubeLauncher {
 
         let mut active = 0;
         for j in jobs.items {
-            if let Some(s) = j.status {
-                if let Some(a) = s.active {
-                    if a > 0 {
+            if let Some(s) = j.status
+                && let Some(a) = s.active
+                    && a > 0 {
                         active += 1;
                     }
-                }
-            }
         }
 
         Ok(active)
@@ -184,10 +182,9 @@ impl KubeLauncher {
     fn service_name_for_launch(&self, repo: &str, launch_id: &str) -> String {
         let safe_repo = repo
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or(repo)
-            .replace('_', "-")
-            .replace('.', "-");
+            .replace(['_', '.'], "-");
         let short_id = launch_id.split('-').next().unwrap_or(launch_id);
         let name = format!("appl-{}-{}", safe_repo, short_id).to_lowercase();
         name.chars().take(63).collect()
@@ -218,25 +215,19 @@ impl KubeLauncher {
 
             let mut ip: Option<String> = None;
 
-            if let Some(spec) = &spec {
-                if let Some(spec_ip) = &spec.load_balancer_ip {
-                    if !spec_ip.trim().is_empty() {
+            if let Some(spec) = &spec
+                && let Some(spec_ip) = &spec.load_balancer_ip
+                    && !spec_ip.trim().is_empty() {
                         ip = Some(spec_ip.clone());
                     }
-                }
-            }
 
-            if ip.is_none() {
-                if let Some(status) = &status {
-                    if let Some(lb) = &status.load_balancer {
-                        if let Some(ing) = &lb.ingress {
-                            if let Some(first) = ing.first() {
+            if ip.is_none()
+                && let Some(status) = &status
+                    && let Some(lb) = &status.load_balancer
+                        && let Some(ing) = &lb.ingress
+                            && let Some(first) = ing.first() {
                                 ip = first.ip.clone().or_else(|| first.hostname.clone());
                             }
-                        }
-                    }
-                }
-            }
 
             let Some(ip) = ip else { continue };
             let Some(ts) = meta.creation_timestamp else {
@@ -277,11 +268,10 @@ impl KubeLauncher {
         let mut used: BTreeSet<i32> = BTreeSet::new();
         for svc in svcs.items {
             if let Some(spec) = &svc.spec {
-                if filter_by_ip {
-                    if spec.load_balancer_ip.as_deref() != shared_ip.as_deref() {
+                if filter_by_ip
+                    && spec.load_balancer_ip.as_deref() != shared_ip.as_deref() {
                         continue;
                     }
-                }
 
                 if let Some(ports) = &spec.ports {
                     for p in ports {
@@ -326,10 +316,9 @@ impl KubeLauncher {
         let ts = Utc::now().format("%Y%m%d%H%M%S").to_string();
         let safe_repo = repo
             .split('/')
-            .last()
+            .next_back()
             .unwrap_or(repo)
-            .replace('_', "-")
-            .replace('.', "-");
+            .replace(['_', '.'], "-");
         let job_name: String = format!("ap-python-{}-{}", safe_repo, ts)
             .to_lowercase()
             .chars()
@@ -615,9 +604,9 @@ impl KubeLauncher {
         let pod_name = pod.and_then(|p| p.metadata.name.clone());
 
         let mut pod_ready = false;
-        if let Some(p) = pod {
-            if let Some(st) = &p.status {
-                if let Some(conds) = &st.conditions {
+        if let Some(p) = pod
+            && let Some(st) = &p.status
+                && let Some(conds) = &st.conditions {
                     for c in conds {
                         if c.type_ == "Ready" && c.status == "True" {
                             pod_ready = true;
@@ -625,8 +614,6 @@ impl KubeLauncher {
                         }
                     }
                 }
-            }
-        }
 
         let svcs = svc_api
             .list(&ListParams::default().labels(&selector))
@@ -677,11 +664,10 @@ impl KubeLauncher {
             .await
             .context("list services")?;
 
-        if let Some(svc) = svcs.items.first() {
-            if let Some(name) = &svc.metadata.name {
+        if let Some(svc) = svcs.items.first()
+            && let Some(name) = &svc.metadata.name {
                 svc_api.delete(name, &DeleteParams::default()).await.ok();
             }
-        }
 
         Ok(())
     }
