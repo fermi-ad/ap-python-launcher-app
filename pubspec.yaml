@@ -1,0 +1,169 @@
+name: ap_python_launcher_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.1.0
+
+environment:
+  sdk: ^3.11.1
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  bison_design_system:
+    git:
+      url: https://github.com/fermi-ad/design-system.git
+      ref: main
+  cupertino_icons: ^1.0.9
+  flutter:
+    sdk: flutter
+  # Fermilab core utilities
+  flutter_controls_core:
+    git:
+      url: https://github.com/fermi-ad/flutter-controls-core.git
+      ref: main
+  http: ^1.6.0
+  shared_preferences: ^2.5.5
+  web: ^1.1.1
+
+dev_dependencies:
+  dart_pre_commit: ^6.1.1+1
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.2.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  fonts:
+    # flutter-controls-core expects this family name in its default (non-Bison)
+    # ThemeData.
+    - family: Local Roboto
+      fonts:
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Thin.ttf
+          weight: 100
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-ThinItalic.ttf
+          weight: 100
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-ExtraLight.ttf
+          weight: 200
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-ExtraLightItalic.ttf
+          weight: 200
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Light.ttf
+          weight: 300
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-LightItalic.ttf
+          weight: 300
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Regular.ttf
+          weight: 400
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-MediumItalic.ttf
+          weight: 500
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-SemiBold.ttf
+          weight: 600
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-SemiBoldItalic.ttf
+          weight: 600
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Bold.ttf
+          weight: 700
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-ExtraBold.ttf
+          weight: 800
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-ExtraBoldItalic.ttf
+          weight: 800
+          style: italic
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-Black.ttf
+          weight: 900
+        - asset: packages/flutter_controls_core/assets/fonts/Roboto-BlackItalic.ttf
+          weight: 900
+          style: italic
+
+    # BisonThemeData uses this family name.
+    - family: Atkinson Hyperlegible Next
+      fonts:
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-Regular.ttf
+          weight: 400
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-Light.ttf
+          weight: 300
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-LightItalic.ttf
+          weight: 300
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-ExtraLight.ttf
+          weight: 200
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-ExtraLightItalic.ttf
+          weight: 200
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-Medium.ttf
+          weight: 500
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-MediumItalic.ttf
+          weight: 500
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-SemiBold.ttf
+          weight: 600
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-SemiBoldItalic.ttf
+          weight: 600
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf
+          weight: 700
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-ExtraBold.ttf
+          weight: 800
+        - asset: packages/bison_design_system/assets/fonts/AtkinsonHyperlegibleNext-ExtraBoldItalic.ttf
+          weight: 800
+          style: italic
+
+dart_pre_commit:
+  analyze:
+    ignore-unstaged-files: true
+  outdated: false

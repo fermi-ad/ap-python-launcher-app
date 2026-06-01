@@ -1,48 +1,16 @@
-name: Continuous Delivery Workflow for Python app launcher
+name: Continuous Deployment for Flutter applications
+
 on:
   push:
     branches:
-      - main
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+      - "main"
 
 jobs:
-
-  Build-Dockerize-Push:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checking out source code
-        uses: actions/checkout@v6
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: adregistry.fnal.gov/applications/${{ github.event.repository.name }}
-          tags: |
-            # This is the default tag for the last commit of the default branch
-            type=edge
-            # This sets the latest tag for default branch
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ github.run_number }},enable={{is_default_branch}}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Login to AD Registry, Harbor
-        uses: docker/login-action@v4
-        with:
-          registry: adregistry.fnal.gov
-          username: ${{ secrets.ADREGISTRY_USERNAME }}
-          password: ${{ secrets.ADREGISTRY_SECRET }}
-
-      - name: Building Docker image and pushing to adregistry
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+  build-and-deploy:
+    uses: fermi-ad/.github/.github/workflows/flutter-deploy.yaml@b99946ba8722aeb25ac95245fa01862054748f92
+    secrets: inherit
+    permissions:
+      contents: write
+    # Optional: Change to true to pull in git submodules during build
+    with:
+      pull-git-submodules: false
