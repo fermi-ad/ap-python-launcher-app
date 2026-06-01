@@ -228,7 +228,7 @@ frontend/.metadata
 src/ap_python_launcher/static/
 
 # Rust backend
-rust-backend/target/
+backend/target/
 
 # AI agent plans
 plans/
