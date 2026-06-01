@@ -1,7 +1,0 @@
-#:schema https://www.schemastore.org/prek.json
-
-[[repos]]
-repo = "local"
-hooks = [
-  { id = "dart-pre-commit", name = "dart_pre_commit", entry = "bash scripts/pre_commit_dart.sh", language = "system", pass_filenames = false, stages = ["pre-commit"] },
-]

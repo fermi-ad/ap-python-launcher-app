@@ -1,57 +1,20 @@
-name: Integration Tests
+name: Continuous Integration for Flutter applications
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
-      - main
-
-concurrency:
-  group: caller-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+      - "main"
 
 jobs:
-  frontend:
-    name: Frontend (Flutter)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-
-    steps:
-      - name: Generate a token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
-          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - name: Checking out source code
-        uses: actions/checkout@v6
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: .fvmrc
-          cache: true
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: flutter pub get
-
-      - name: Lint frontend
-        working-directory: frontend
-        run: flutter analyze
-
-      - name: Run frontend tests
-        working-directory: frontend
-        run: flutter test
+  test:
+    uses: fermi-ad/.github/.github/workflows/flutter-integration.yaml@add7aae28c8a3f714dbd11341776cede88a3f33e
+    secrets: inherit
+    strategy:
+      fail-fast: false
+      matrix:
+        test: 
+          - smoke_test
+    # Change to true to pull in git submodules during build
+    with:
+      pull-git-submodules: false
+      coverage-exclude: "|tool/setup_git_hooks.dart"

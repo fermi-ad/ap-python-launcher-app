@@ -2,9 +2,9 @@ import 'dart:async' show Future, unawaited;
 
 import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
 import 'package:flutter/material.dart';
-import 'package:frontend/launcher/launcher_controller.dart'
+import 'package:ap_python_launcher_app/launcher/launcher_controller.dart'
     show LauncherController;
-import 'package:frontend/launcher/launcher_widgets.dart'
+import 'package:ap_python_launcher_app/launcher/launcher_widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
 
 /// The main screen of the AP Python Launcher application.

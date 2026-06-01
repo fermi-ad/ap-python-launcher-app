@@ -1,11 +1,12 @@
 import 'dart:async' show Future;
 import 'dart:convert' show JsonEncoder;
 
-import 'package:frontend/api_service.dart' as api;
-import 'package:frontend/job_store.dart' as jobs;
-import 'package:frontend/launcher/launcher_models.dart'
+import 'package:ap_python_launcher_app/api_service.dart' as api;
+import 'package:ap_python_launcher_app/job_store.dart' as jobs;
+import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
     show RowState, RowStateKind;
-import 'package:frontend/launcher/launcher_poller.dart' show LauncherPoller;
+import 'package:ap_python_launcher_app/launcher/launcher_poller.dart'
+    show LauncherPoller;
 
 /// Manages the business logic for the launcher UI.
 ///

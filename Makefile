@@ -1,17 +1,17 @@
-FVM ?= ../.fvm/flutter_sdk/bin/
+FVM ?= ./.fvm/flutter_sdk/bin/
 
-.PHONY: help test-frontend lint build-frontend
+.PHONY: help test lint build
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
-test-frontend: ## Run Flutter (frontend/) tests
-	cd frontend && $(FVM)flutter test --concurrency=1
+test: ## Run Flutter (frontend/) tests
+	$(FVM)flutter test --concurrency=1
 
 lint: ## Run flutter analyze
-	cd frontend && $(FVM)flutter analyze
+	$(FVM)flutter analyze
 
-build-frontend: ## Build Flutter web frontend
-	cd frontend && $(FVM)flutter pub get
-	cd frontend && $(FVM)flutter build web --wasm --no-web-resources-cdn
+build: ## Build Flutter web frontend
+	$(FVM)flutter pub get
+	$(FVM)flutter build web --wasm --no-web-resources-cdn

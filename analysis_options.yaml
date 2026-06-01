@@ -1,6 +1,5 @@
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
-
+# This is the current set of styling overrides for Dart applications.
+# Entries should include a comment explaining why a deviation from the recommended options (from Flutter, below) was made and/or reference a pull request where the discussion took place.
 include:
   - package:flutter_lints/flutter.yaml
   - package:very_good_analysis/analysis_options.yaml
@@ -13,10 +12,11 @@ analyzer:
 
 linter:
   rules:
-    # The team determined that 'final' should be used wherever relevant (for any variable that does not change after initialization).
+    # The team determined that 'final' should be used wherever relevant (for any variable that does not change after initialization). See PR #2.
     prefer_final_locals: true
     prefer_final_in_for_each: true
-    parameter_assignments: true  # Replaces prefer_final_parameters.
+    avoid_final_parameters: false
+    prefer_final_parameters: true
 
 plugins:
   explicit_imports:

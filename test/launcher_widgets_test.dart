@@ -2,9 +2,9 @@ import 'package:bison_design_system/bison_design_system.dart'
     show BisonThemeData;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/api_service.dart' as api;
-import 'package:frontend/launcher/launcher_models.dart' as models;
-import 'package:frontend/launcher/launcher_widgets.dart'
+import 'package:ap_python_launcher_app/api_service.dart' as api;
+import 'package:ap_python_launcher_app/launcher/launcher_models.dart' as models;
+import 'package:ap_python_launcher_app/launcher/launcher_widgets.dart'
     show AppsTable, StatusText;
 
 void main() {

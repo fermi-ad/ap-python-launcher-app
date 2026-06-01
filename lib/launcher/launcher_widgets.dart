@@ -1,9 +1,9 @@
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonButton, BisonContext;
 import 'package:flutter/material.dart';
-import 'package:frontend/api_service.dart' show AppInfo;
-import 'package:frontend/connect.dart' show openInNewTab;
-import 'package:frontend/launcher/launcher_models.dart'
+import 'package:ap_python_launcher_app/api_service.dart' show AppInfo;
+import 'package:ap_python_launcher_app/connect.dart' show openInNewTab;
+import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
     show RowState, RowStateKind;
 
 /// Displays a status message, rendering any embedded URL as a tappable link.

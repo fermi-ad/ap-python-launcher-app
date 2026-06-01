@@ -1,7 +1,8 @@
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonThemeData;
 import 'package:flutter/material.dart';
-import 'package:frontend/launcher_screen.dart' show LauncherScreen;
+import 'package:ap_python_launcher_app/launcher_screen.dart'
+    show LauncherScreen;
 
 /// Entry point for the AP Python Launcher application.
 void main() {

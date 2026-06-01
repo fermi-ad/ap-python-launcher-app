@@ -7,7 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:frontend/main.dart' show ApPythonLauncherApp;
+import 'package:ap_python_launcher_app/main.dart' show ApPythonLauncherApp;
 
 void main() {
   testWidgets('App builds', (tester) async {
