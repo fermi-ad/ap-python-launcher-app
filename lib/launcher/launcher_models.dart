@@ -49,10 +49,10 @@ class RowState {
 
   /// Returns a copy of this [RowState] with the given fields replaced.
   RowState copyWith({
-    RowStateKind? kind,
-    String? launchId,
-    String? connectUrl,
-    String? statusOverride,
+    final RowStateKind? kind,
+    final String? launchId,
+    final String? connectUrl,
+    final String? statusOverride,
   }) {
     return RowState(
       kind: kind ?? this.kind,

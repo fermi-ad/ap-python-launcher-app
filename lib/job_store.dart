@@ -12,7 +12,7 @@ class SavedJob {
   SavedJob({required this.launchId, required this.repo, required this.tag});
 
   /// Deserializes a [SavedJob] from a JSON map.
-  factory SavedJob.fromJson(Map<String, dynamic> json) {
+  factory SavedJob.fromJson(final Map<String, dynamic> json) {
     return SavedJob(
       launchId: (json['launchId'] as String?) ?? '',
       repo: (json['repo'] as String?) ?? '',
@@ -52,7 +52,7 @@ class JobStore {
           .whereType<Map<String, dynamic>>()
           .map(SavedJob.fromJson)
           .where(
-            (j) =>
+            (final j) =>
                 j.launchId.isNotEmpty && j.repo.isNotEmpty && j.tag.isNotEmpty,
           )
           .toList();
@@ -63,28 +63,32 @@ class JobStore {
 
   /// Saves a job identified by [launchId], [repo], and [tag], replacing any
   /// existing entry for the same [repo]/[tag] pair.
-  Future<void> saveJob(String launchId, String repo, String tag) async {
+  Future<void> saveJob(
+    final String launchId,
+    final String repo,
+    final String tag,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final jobs =
         (await loadJobs())
-            .where((j) => !(j.repo == repo && j.tag == tag))
+            .where((final j) => !(j.repo == repo && j.tag == tag))
             .toList()
           ..add(SavedJob(launchId: launchId, repo: repo, tag: tag));
     await prefs.setString(
       jobsKey,
-      jsonEncode(jobs.map((j) => j.toJson()).toList()),
+      jsonEncode(jobs.map((final j) => j.toJson()).toList()),
     );
   }
 
   /// Removes the saved job with the given [launchId].
-  Future<void> removeJob(String launchId) async {
+  Future<void> removeJob(final String launchId) async {
     final prefs = await SharedPreferences.getInstance();
     final jobs = (await loadJobs())
-        .where((j) => j.launchId != launchId)
+        .where((final j) => j.launchId != launchId)
         .toList();
     await prefs.setString(
       jobsKey,
-      jsonEncode(jobs.map((j) => j.toJson()).toList()),
+      jsonEncode(jobs.map((final j) => j.toJson()).toList()),
     );
   }
 }

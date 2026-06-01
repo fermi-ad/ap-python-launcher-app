@@ -5,12 +5,11 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:ap_python_launcher_app/main.dart' show ApPythonLauncherApp;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ap_python_launcher_app/main.dart' show ApPythonLauncherApp;
-
 void main() {
-  testWidgets('App builds', (tester) async {
+  testWidgets('App builds', (final tester) async {
     await tester.pumpWidget(const ApPythonLauncherApp());
     expect(find.text('AP Python Launcher'), findsOneWidget);
   });

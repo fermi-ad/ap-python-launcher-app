@@ -1,11 +1,10 @@
 import 'dart:collection' show Queue;
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:ap_python_launcher_app/api_service.dart' as api;
 import 'package:ap_python_launcher_app/launcher/launcher_models.dart' as models;
 import 'package:ap_python_launcher_app/launcher/launcher_poller.dart'
     show LauncherPoller;
+import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart' show FakeApiService, FakeJobStore, pumpMicrotasks;
 
@@ -21,8 +20,9 @@ void main() {
         apiService: fakeApi,
         jobStore: jobs,
         pollInterval: Duration.zero,
-        onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (text, notify) {},
+        onRowState: (final repo, final tag, final state) =>
+            rowStates['$repo:$tag'] = state,
+        onStatus: (final text, final notify) {},
       )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
@@ -64,8 +64,9 @@ void main() {
         apiService: fakeApi,
         jobStore: jobs,
         pollInterval: Duration.zero,
-        onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (text, _) => statusText = text,
+        onRowState: (final repo, final tag, final state) =>
+            rowStates['$repo:$tag'] = state,
+        onStatus: (final text, _) => statusText = text,
       )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
@@ -100,8 +101,9 @@ void main() {
         apiService: fakeApi,
         jobStore: jobs,
         pollInterval: Duration.zero,
-        onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (text, notify) {},
+        onRowState: (final repo, final tag, final state) =>
+            rowStates['$repo:$tag'] = state,
+        onStatus: (final text, final notify) {},
       )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
@@ -130,8 +132,9 @@ void main() {
         apiService: fakeApi,
         jobStore: jobs,
         pollInterval: Duration.zero,
-        onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-        onStatus: (text, notify) {},
+        onRowState: (final repo, final tag, final state) =>
+            rowStates['$repo:$tag'] = state,
+        onStatus: (final text, final notify) {},
       )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
       await pumpMicrotasks();
@@ -186,8 +189,9 @@ void main() {
           apiService: fakeApi,
           jobStore: jobs,
           pollInterval: Duration.zero,
-          onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-          onStatus: (text, notify) {},
+          onRowState: (final repo, final tag, final state) =>
+              rowStates['$repo:$tag'] = state,
+          onStatus: (final text, final notify) {},
         )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
         await pumpMicrotasks();
@@ -244,8 +248,9 @@ void main() {
           apiService: fakeApi,
           jobStore: jobs,
           pollInterval: Duration.zero,
-          onRowState: (repo, tag, state) => rowStates['$repo:$tag'] = state,
-          onStatus: (text, notify) {},
+          onRowState: (final repo, final tag, final state) =>
+              rowStates['$repo:$tag'] = state,
+          onStatus: (final text, final notify) {},
         )..startTracking('id1', 'ap-python/foo', 'latest', () {});
 
         await pumpMicrotasks();

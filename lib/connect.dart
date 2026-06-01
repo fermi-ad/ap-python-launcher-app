@@ -10,4 +10,4 @@ import 'package:ap_python_launcher_app/connect_stub.dart'
 /// Opens [url] in a new browser tab.
 ///
 /// On non-web platforms and in tests this is a no-op.
-void openInNewTab(String url) => impl.openInNewTab(url);
+void openInNewTab(final String url) => impl.openInNewTab(url);

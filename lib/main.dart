@@ -1,8 +1,8 @@
+import 'package:ap_python_launcher_app/launcher_screen.dart'
+    show LauncherScreen;
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonThemeData;
 import 'package:flutter/material.dart';
-import 'package:ap_python_launcher_app/launcher_screen.dart'
-    show LauncherScreen;
 
 /// Entry point for the AP Python Launcher application.
 void main() {
@@ -15,7 +15,7 @@ class ApPythonLauncherApp extends StatelessWidget {
   const ApPythonLauncherApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return MaterialApp(
       title: 'AP Python Launcher',
       theme: BisonThemeData.dark(),

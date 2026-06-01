@@ -1,11 +1,11 @@
 import 'dart:async' show Future, unawaited;
 
-import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
-import 'package:flutter/material.dart';
 import 'package:ap_python_launcher_app/launcher/launcher_controller.dart'
     show LauncherController;
 import 'package:ap_python_launcher_app/launcher/launcher_widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
+import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
+import 'package:flutter/material.dart';
 
 /// The main screen of the AP Python Launcher application.
 class LauncherScreen extends StatefulWidget {
@@ -38,14 +38,17 @@ class _LauncherScreenState extends State<LauncherScreen> {
 
   Future<void> _refresh() => _controller.refresh(_notify);
 
-  Future<void> _launch(String repo, String tag) =>
+  Future<void> _launch(final String repo, final String tag) =>
       _controller.launch(repo, tag, _notify);
 
-  Future<void> _end(String launchId, String repo, String tag) =>
-      _controller.end(launchId, repo, tag, _notify);
+  Future<void> _end(
+    final String launchId,
+    final String repo,
+    final String tag,
+  ) => _controller.end(launchId, repo, tag, _notify);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(final BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Align(

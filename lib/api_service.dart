@@ -31,7 +31,7 @@ class AppInfo {
   AppInfo({required this.repo, required this.tag, required this.allTags});
 
   /// Deserializes an [AppInfo] from a JSON map.
-  factory AppInfo.fromJson(Map<String, dynamic> json) {
+  factory AppInfo.fromJson(final Map<String, dynamic> json) {
     return AppInfo(
       repo: (json['repo'] as String?) ?? '',
       tag: json['tag'] as String?,
@@ -56,7 +56,7 @@ class LaunchAccess {
   LaunchAccess({required this.status, required this.urls});
 
   /// Deserializes a [LaunchAccess] from a nullable JSON map.
-  factory LaunchAccess.fromJson(Map<String, dynamic>? json) {
+  factory LaunchAccess.fromJson(final Map<String, dynamic>? json) {
     final m = json ?? const <String, dynamic>{};
     return LaunchAccess(
       status: (m['status'] as String?) ?? 'Pending',
@@ -82,7 +82,7 @@ class LaunchStatus {
   });
 
   /// Deserializes a [LaunchStatus] from a JSON map.
-  factory LaunchStatus.fromJson(Map<String, dynamic> json) {
+  factory LaunchStatus.fromJson(final Map<String, dynamic> json) {
     return LaunchStatus(
       launchId: (json['launchId'] as String?) ?? '',
       status: (json['status'] as String?) ?? '',
@@ -114,7 +114,7 @@ class LaunchResponse {
   });
 
   /// Deserializes a [LaunchResponse] from a JSON map.
-  factory LaunchResponse.fromJson(Map<String, dynamic> json) {
+  factory LaunchResponse.fromJson(final Map<String, dynamic> json) {
     return LaunchResponse(
       launchId: (json['launchId'] as String?) ?? '',
       tag: json['tag'] as String?,
@@ -138,16 +138,16 @@ abstract class ApiService {
   Future<List<AppInfo>> getApps();
 
   /// Requests a launch for the given [repo] and returns the response.
-  Future<LaunchResponse> postLaunch(String repo);
+  Future<LaunchResponse> postLaunch(final String repo);
 
   /// Returns the current status of the launch identified by [launchId].
-  Future<LaunchStatus> getLaunchStatus(String launchId);
+  Future<LaunchStatus> getLaunchStatus(final String launchId);
 
   /// Returns the current statuses for the given [launchIds].
-  Future<List<LaunchStatus>> getLaunchStatuses(List<String> launchIds);
+  Future<List<LaunchStatus>> getLaunchStatuses(final List<String> launchIds);
 
   /// Deletes (ends) the launch identified by [launchId].
-  Future<Map<String, dynamic>> deleteLaunch(String launchId);
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId);
 }
 
 /// HTTP implementation of [ApiService] that communicates with the backend.
@@ -161,7 +161,7 @@ class HttpApiService implements ApiService {
   /// the FastAPI server at `/`.
   ///
   /// An optional HTTP [client] can be injected for testing.
-  HttpApiService({String baseUrl = '', Client? client})
+  HttpApiService({final String baseUrl = '', final Client? client})
     : _baseUri = Uri.parse(baseUrl.isEmpty ? '' : baseUrl),
       _client = client ?? Client();
 
@@ -169,10 +169,10 @@ class HttpApiService implements ApiService {
   final Client _client;
 
   Future<Map<String, dynamic>> _fetchJson(
-    String path, {
-    String method = 'GET',
-    Map<String, String>? headers,
-    Object? body,
+    final String path, {
+    final String method = 'GET',
+    final Map<String, String>? headers,
+    final Object? body,
   }) async {
     final uri = _baseUri.resolve(path);
 
@@ -207,7 +207,7 @@ class HttpApiService implements ApiService {
   }
 
   @override
-  Future<LaunchResponse> postLaunch(String repo) async {
+  Future<LaunchResponse> postLaunch(final String repo) async {
     final data = await _fetchJson(
       'launch',
       method: 'POST',
@@ -218,13 +218,15 @@ class HttpApiService implements ApiService {
   }
 
   @override
-  Future<LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<LaunchStatus> getLaunchStatus(final String launchId) async {
     final data = await _fetchJson('launch/$launchId');
     return LaunchStatus.fromJson(data);
   }
 
   @override
-  Future<List<LaunchStatus>> getLaunchStatuses(List<String> launchIds) async {
+  Future<List<LaunchStatus>> getLaunchStatuses(
+    final List<String> launchIds,
+  ) async {
     final data = await _fetchJson(
       'launch/status',
       method: 'POST',
@@ -239,7 +241,7 @@ class HttpApiService implements ApiService {
   }
 
   @override
-  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     return _fetchJson('launch/$launchId', method: 'DELETE');
   }
 }
