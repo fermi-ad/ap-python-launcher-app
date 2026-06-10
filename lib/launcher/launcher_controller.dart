@@ -2,6 +2,7 @@ import 'dart:async' show Future;
 import 'dart:convert' show JsonEncoder;
 
 import 'package:ap_python_launcher_app/api_service.dart' as api;
+import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/job_store.dart' as jobs;
 import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
     show RowState, RowStateKind;
@@ -26,7 +27,7 @@ class LauncherController {
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 60),
-  }) : _api = apiService ?? api.HttpApiService(),
+  }) : _api = apiService ?? api.HttpApiService(baseUrl: Config.apiBaseUrl),
        _jobs = jobStore ?? jobs.JobStore();
   final api.ApiService _api;
   final jobs.JobStore _jobs;

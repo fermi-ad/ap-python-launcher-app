@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1
+
+# Dev image for ap-python-launcher-app (Flutter web).
+#
+# This runs `flutter run -d web-server` inside the container so you can iterate
+# quickly.
+
+FROM debian:bookworm-slim
+
+ARG FLUTTER_VERSION=3.41.4
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime/build deps for Flutter web.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Flutter SDK.
+RUN git clone --depth 1 --branch ${FLUTTER_VERSION} https://github.com/flutter/flutter.git /opt/flutter
+
+# Ensure Flutter is on PATH for both non-login and login shells.
+# (Some environments reset PATH when invoking `bash -lc`.)
+RUN ln -sf /opt/flutter/bin/flutter /usr/local/bin/flutter \
+  && ln -sf /opt/flutter/bin/dart /usr/local/bin/dart
+
+ENV PATH="/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+# Pre-cache web artifacts to reduce first-run latency.
+RUN flutter config --enable-web \
+  && flutter doctor -v \
+  && flutter precache --web
+
+WORKDIR /app
+
+# Cache pub deps.
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get
+
+# Copy the rest of the app.
+COPY . .
+
+# Flutter web-server default port.
+EXPOSE 8080
+
+# Run the dev server.
+#
+CMD ["bash", "-lc", "flutter pub get && flutter run -d web-server --web-hostname 0.0.0.0 --web-port 8080 --dart-define=API_BASE_URL=${API_BASE_URL:-http://localhost:8000/}"]

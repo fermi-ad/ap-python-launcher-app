@@ -1,0 +1,15 @@
+# Keep Docker build context small.
+
+# Flutter/Dart build outputs
+/build
+/.dart_tool
+
+# VCS
+/.git
+
+# Editor/OS
+/.vscode
+.DS_Store
+
+# Logs
+**/*.log
