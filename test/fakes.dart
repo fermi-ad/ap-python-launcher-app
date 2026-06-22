@@ -78,7 +78,7 @@ class FakeApiService implements ApiService {
             LaunchStatus(
               launchId: launchId,
               status: 'NotFound',
-              access: LaunchAccess(status: 'Pending', urls: const []),
+              access: LaunchAccess(status: 'Pending', url: null),
               raw: const <String, dynamic>{'status': 'NotFound'},
             ),
           );

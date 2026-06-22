@@ -46,13 +46,13 @@ void main() {
           status: 'Running',
           access: api.LaunchAccess(
             status: 'Ready',
-            urls: const ['http://host:80/'],
+            url: 'http://host:80/',
           ),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Ready',
-              'urls': <String>['http://host:80/'],
+              'url': 'http://host:80/',
             },
           },
         );
@@ -84,12 +84,12 @@ void main() {
         ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Succeeded',
-          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          access: api.LaunchAccess(status: 'Pending', url: null),
           raw: const <String, dynamic>{
             'status': 'Succeeded',
             'access': <String, dynamic>{
               'status': 'Pending',
-              'urls': <String>[],
+              'url': null,
             },
           },
         );
@@ -158,25 +158,25 @@ void main() {
             status: 'Running',
             access: api.LaunchAccess(
               status: 'Ready',
-              urls: const ['http://host:80/'],
+              url: 'http://host:80/',
             ),
             raw: const <String, dynamic>{
               'status': 'Running',
               'access': <String, dynamic>{
                 'status': 'Ready',
-                'urls': <String>['http://host:80/'],
+                'url': 'http://host:80/',
               },
             },
           ),
           api.LaunchStatus(
             launchId: 'id1',
             status: 'Succeeded',
-            access: api.LaunchAccess(status: 'Pending', urls: const []),
+            access: api.LaunchAccess(status: 'Pending', url: null),
             raw: const <String, dynamic>{
               'status': 'Succeeded',
               'access': <String, dynamic>{
                 'status': 'Pending',
-                'urls': <String>[],
+                'url': null,
               },
             },
           ),
@@ -213,12 +213,12 @@ void main() {
         final runningStatus = api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: api.LaunchAccess(status: 'Running', urls: const []),
+          access: api.LaunchAccess(status: 'Running', url: null),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Running',
-              'urls': <String>[],
+              'url': null,
             },
           },
         );
@@ -229,13 +229,13 @@ void main() {
             status: 'Running',
             access: api.LaunchAccess(
               status: 'Ready',
-              urls: const ['http://host:80/'],
+              url: 'http://host:80/',
             ),
             raw: const <String, dynamic>{
               'status': 'Running',
               'access': <String, dynamic>{
                 'status': 'Ready',
-                'urls': <String>['http://host:80/'],
+                'url': 'http://host:80/',
               },
             },
           ),

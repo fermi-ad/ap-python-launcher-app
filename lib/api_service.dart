@@ -3,6 +3,9 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 import 'package:http/http.dart' show Client, Request, Response;
 
 /// Exception thrown when an HTTP API call returns a non-2xx status code.
+///
+/// The backend returns RFC 7807 Problem Details JSON for all error responses.
+/// [toString] extracts the `detail` field when present for a readable message.
 class ApiException implements Exception {
   /// Creates an [ApiException] with the given HTTP [statusCode], [statusText],
   /// and response [body].
@@ -22,7 +25,20 @@ class ApiException implements Exception {
   final String body;
 
   @override
-  String toString() => '$statusCode $statusText: $body';
+  String toString() {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final detail = decoded['detail'] as String?;
+        if (detail != null && detail.isNotEmpty) {
+          return '$statusCode $statusText: $detail';
+        }
+      }
+    } on Object {
+      // body is not JSON — fall through to raw body
+    }
+    return '$statusCode $statusText: $body';
+  }
 }
 
 /// Metadata about a launchable application returned by the API.
@@ -50,25 +66,26 @@ class AppInfo {
   final List<String> allTags;
 }
 
-/// Access information for a running launch, including its status and URLs.
+/// Access information for a running launch, including its status and URL.
 class LaunchAccess {
-  /// Creates a [LaunchAccess] with the given [status] and [urls].
-  LaunchAccess({required this.status, required this.urls});
+  /// Creates a [LaunchAccess] with the given [status] and [url].
+  LaunchAccess({required this.status, required this.url});
 
   /// Deserializes a [LaunchAccess] from a nullable JSON map.
   factory LaunchAccess.fromJson(final Map<String, dynamic>? json) {
     final m = json ?? const <String, dynamic>{};
     return LaunchAccess(
       status: (m['status'] as String?) ?? 'Pending',
-      urls: (m['urls'] as List?)?.whereType<String>().toList() ?? const [],
+      url: m['url'] as String?,
     );
   }
 
   /// The access readiness status (e.g. `'Pending'`, `'Ready'`).
   final String status;
 
-  /// The list of URLs through which the app can be reached.
-  final List<String> urls;
+  /// The URL through which the app can be reached, or `null` if not yet
+  /// available.
+  final String? url;
 }
 
 /// The current status of a launch job returned by the API.

@@ -258,17 +258,17 @@ class LauncherController {
         continue;
       }
 
-      final urls = st.access.urls;
+      final url = st.access.url;
       final accessStatus = st.access.status;
 
-      if (urls.isNotEmpty && accessStatus == 'Ready') {
+      if (url != null && accessStatus == 'Ready') {
         _setRowState(
           job.repo,
           job.tag,
           RowState(
             kind: RowStateKind.ready,
             launchId: job.launchId,
-            connectUrl: urls.first,
+            connectUrl: url,
           ),
           notify,
         );
