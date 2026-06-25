@@ -150,18 +150,18 @@ class LauncherPoller {
       _onLaunchJson?.call(st, tracked.notify);
     }
 
-    final urls = st.access.urls;
+    final url = st.access.url;
     final accessStatus = st.access.status;
 
-    if (urls.isNotEmpty && accessStatus == 'Ready') {
-      _onStatus('App is reachable: ${urls.join(", ")}', tracked.notify);
+    if (url != null && accessStatus == 'Ready') {
+      _onStatus('App is reachable: $url', tracked.notify);
       _onRowState(
         tracked.repo,
         tracked.tag,
         RowState(
           kind: RowStateKind.ready,
           launchId: launchId,
-          connectUrl: urls.first,
+          connectUrl: url,
         ),
       );
       tracked.updateLaunchJson = false;

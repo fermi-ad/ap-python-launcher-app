@@ -2,6 +2,7 @@ import 'dart:async' show Future;
 import 'dart:convert' show JsonEncoder;
 
 import 'package:ap_python_launcher_app/api_service.dart' as api;
+import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/job_store.dart' as jobs;
 import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
     show RowState, RowStateKind;
@@ -26,7 +27,11 @@ class LauncherController {
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 60),
-  }) : _api = apiService ?? api.HttpApiService(),
+    // The analyzer incorrectly thinks that `Config.apiBaseUrl` doesn't do
+    // anything just because its default of an empty string matches the
+    // `baseUrl` param's default.
+    // ignore: avoid_redundant_argument_values
+  }) : _api = apiService ?? api.HttpApiService(baseUrl: Config.apiBaseUrl),
        _jobs = jobStore ?? jobs.JobStore();
   final api.ApiService _api;
   final jobs.JobStore _jobs;
@@ -257,17 +262,17 @@ class LauncherController {
         continue;
       }
 
-      final urls = st.access.urls;
+      final url = st.access.url;
       final accessStatus = st.access.status;
 
-      if (urls.isNotEmpty && accessStatus == 'Ready') {
+      if (url != null && accessStatus == 'Ready') {
         _setRowState(
           job.repo,
           job.tag,
           RowState(
             kind: RowStateKind.ready,
             launchId: job.launchId,
-            connectUrl: urls.first,
+            connectUrl: url,
           ),
           notify,
         );

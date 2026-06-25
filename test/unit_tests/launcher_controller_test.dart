@@ -11,6 +11,46 @@ import 'fakes.dart'
     show FakeApiService, FakeJobStore, NotifyCounter, pumpMicrotasks;
 
 void main() {
+  group('ApiException.toString', () {
+    test('extracts detail from RFC 7807 Problem Details body', () {
+      const detail = 'Job limit exceeded';
+      final e = api.ApiException(
+        statusCode: 429,
+        statusText: 'Too Many Requests',
+        body: '{"type":"about:blank","status":429,"detail":"$detail"}',
+      );
+      expect(e.toString(), '429 Too Many Requests: $detail');
+    });
+
+    test('falls back to raw body when body is not JSON', () {
+      final e = api.ApiException(
+        statusCode: 503,
+        statusText: 'Service Unavailable',
+        body: 'upstream timeout',
+      );
+      expect(e.toString(), '503 Service Unavailable: upstream timeout');
+    });
+
+    test('falls back to raw body when detail field is absent', () {
+      const body = '{"type":"about:blank","title":"Bad Request","status":400}';
+      final e = api.ApiException(
+        statusCode: 400,
+        statusText: 'Bad Request',
+        body: body,
+      );
+      expect(e.toString(), '400 Bad Request: $body');
+    });
+
+    test('falls back to raw body when body is empty', () {
+      final e = api.ApiException(
+        statusCode: 404,
+        statusText: 'Not Found',
+        body: '',
+      );
+      expect(e.toString(), '404 Not Found: ');
+    });
+  });
+
   group('LauncherController.refresh', () {
     test('loads apps and sets status', () async {
       final fakeApi = FakeApiService()
@@ -65,12 +105,12 @@ void main() {
         ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          access: api.LaunchAccess(status: 'Pending', url: null),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Pending',
-              'urls': <String>[],
+              'url': null,
             },
           },
         );
@@ -102,13 +142,13 @@ void main() {
           status: 'Running',
           access: api.LaunchAccess(
             status: 'Ready',
-            urls: const ['http://host:80/'],
+            url: 'http://host:80/',
           ),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Ready',
-              'urls': <String>['http://host:80/'],
+              'url': 'http://host:80/',
             },
           },
         );
@@ -163,12 +203,12 @@ void main() {
         api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: api.LaunchAccess(status: 'Running', urls: const []),
+          access: api.LaunchAccess(status: 'Running', url: null),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Running',
-              'urls': <String>[],
+              'url': null,
             },
             'source': 'poll-status-1',
           },
@@ -178,13 +218,13 @@ void main() {
           status: 'Running',
           access: api.LaunchAccess(
             status: 'Ready',
-            urls: const ['http://host:80/'],
+            url: 'http://host:80/',
           ),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Ready',
-              'urls': <String>['http://host:80/'],
+              'url': 'http://host:80/',
             },
             'source': 'poll-status-2',
           },
@@ -241,12 +281,12 @@ void main() {
         api.LaunchStatus(
           launchId: 'id1',
           status: 'Running',
-          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          access: api.LaunchAccess(status: 'Pending', url: null),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Pending',
-              'urls': <String>[],
+              'url': null,
             },
           },
         ),
@@ -292,13 +332,13 @@ void main() {
           status: 'Running',
           access: api.LaunchAccess(
             status: 'Ready',
-            urls: const ['http://host:80/'],
+            url: 'http://host:80/',
           ),
           raw: const <String, dynamic>{
             'status': 'Running',
             'access': <String, dynamic>{
               'status': 'Ready',
-              'urls': <String>['http://host:80/'],
+              'url': 'http://host:80/',
             },
           },
         );
@@ -321,12 +361,12 @@ void main() {
         ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Succeeded',
-          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          access: api.LaunchAccess(status: 'Pending', url: null),
           raw: const <String, dynamic>{
             'status': 'Succeeded',
             'access': <String, dynamic>{
               'status': 'Pending',
-              'urls': <String>[],
+              'url': null,
             },
           },
         );
@@ -373,12 +413,12 @@ void main() {
         ..launchStatuses['id1'] = api.LaunchStatus(
           launchId: 'id1',
           status: 'Succeeded',
-          access: api.LaunchAccess(status: 'Pending', urls: const []),
+          access: api.LaunchAccess(status: 'Pending', url: null),
           raw: const <String, dynamic>{
             'status': 'Succeeded',
             'access': <String, dynamic>{
               'status': 'Pending',
-              'urls': <String>[],
+              'url': null,
             },
           },
         );
