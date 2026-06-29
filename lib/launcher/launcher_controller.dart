@@ -16,22 +16,20 @@ import 'package:ap_python_launcher_app/launcher/launcher_poller.dart'
 class LauncherController {
   /// Creates a [LauncherController].
   ///
+  /// [config] provides the runtime configuration (e.g. backend API URL).
   /// Optional [apiService] and [jobStore] can be injected for testing.
   /// [pollInterval] controls how often running jobs are polled.
   /// [endPollInterval] controls how often a terminating job is polled.
   /// [endTimeout] is how long to wait for confirmation before stopping
   /// tracking and returning the row to idle.
   LauncherController({
+    Config config = Config.defaults,
     final api.ApiService? apiService,
     final jobs.JobStore? jobStore,
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 60),
-    // The analyzer incorrectly thinks that `Config.apiBaseUrl` doesn't do
-    // anything just because its default of an empty string matches the
-    // `baseUrl` param's default.
-    // ignore: avoid_redundant_argument_values
-  }) : _api = apiService ?? api.HttpApiService(baseUrl: Config.apiBaseUrl),
+  }) : _api = apiService ?? api.HttpApiService(baseUrl: config.apiBaseUrl),
        _jobs = jobStore ?? jobs.JobStore();
   final api.ApiService _api;
   final jobs.JobStore _jobs;

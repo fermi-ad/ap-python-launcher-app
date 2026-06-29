@@ -1,5 +1,6 @@
 import 'dart:async' show Future, unawaited;
 
+import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/launcher/launcher_controller.dart'
     show LauncherController;
 import 'package:ap_python_launcher_app/launcher/launcher_widgets.dart'
@@ -10,14 +11,19 @@ import 'package:flutter/material.dart';
 /// The main screen of the AP Python Launcher application.
 class LauncherScreen extends StatefulWidget {
   /// Creates a [LauncherScreen].
-  const LauncherScreen({super.key});
+  const LauncherScreen({required this.config, super.key});
+
+  /// Runtime configuration passed down from `main`.
+  final Config config;
 
   @override
   State<LauncherScreen> createState() => _LauncherScreenState();
 }
 
 class _LauncherScreenState extends State<LauncherScreen> {
-  final LauncherController _controller = LauncherController();
+  late final LauncherController _controller = LauncherController(
+    config: widget.config,
+  );
 
   @override
   void initState() {
