@@ -1,3 +1,4 @@
+import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/launcher_screen.dart'
     show LauncherScreen;
 import 'package:bison_design_system/bison_design_system.dart'
@@ -5,14 +6,19 @@ import 'package:bison_design_system/bison_design_system.dart'
 import 'package:flutter/material.dart';
 
 /// Entry point for the AP Python Launcher application.
-void main() {
-  runApp(const ApPythonLauncherApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final config = await Config.load();
+  runApp(ApPythonLauncherApp(config: config));
 }
 
 /// The root widget of the AP Python Launcher application.
 class ApPythonLauncherApp extends StatelessWidget {
   /// Creates an [ApPythonLauncherApp].
-  const ApPythonLauncherApp({super.key});
+  const ApPythonLauncherApp({required this.config, super.key});
+
+  /// Runtime configuration loaded in [main].
+  final Config config;
 
   @override
   Widget build(final BuildContext context) {
@@ -20,7 +26,7 @@ class ApPythonLauncherApp extends StatelessWidget {
       title: 'AP Python Launcher',
       theme: BisonThemeData.dark(),
       darkTheme: BisonThemeData.dark(),
-      home: const LauncherScreen(),
+      home: LauncherScreen(config: config),
     );
   }
 }
