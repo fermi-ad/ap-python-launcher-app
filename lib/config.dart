@@ -1,7 +1,7 @@
 import 'dart:convert' show jsonDecode;
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http show Client, get;
 
 /// Runtime configuration for the app.
 ///
@@ -30,13 +30,18 @@ class Config {
   ///
   /// In debug mode, returns immediately with [apiBaseUrl] set to `''`.
   /// In release/profile mode, fetches `config.json` from the current origin.
-  static Future<Config> load() async {
-    if (kDebugMode) {
+  ///
+  /// An optional [client] may be supplied to override the default HTTP client,
+  /// which is useful in tests.
+  static Future<Config> load({final http.Client? client}) async {
+    if (client == null && kDebugMode) {
       return Config.defaults;
     }
 
     try {
-      final response = await http.get(Uri.parse('config.json'));
+      final response = await (client != null
+          ? client.get(Uri.parse('config.json'))
+          : http.get(Uri.parse('config.json')));
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         return Config._(
