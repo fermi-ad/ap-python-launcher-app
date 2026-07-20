@@ -1,26 +1,26 @@
 import 'dart:async' show Future, unawaited;
 
 import 'package:ap_python_launcher_app/config.dart' show Config;
-import 'package:ap_python_launcher_app/launcher/launcher_controller.dart'
+import 'package:ap_python_launcher_app/launcher/controller.dart'
     show LauncherController;
-import 'package:ap_python_launcher_app/launcher/launcher_widgets.dart'
+import 'package:ap_python_launcher_app/launcher/widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
 import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
 import 'package:flutter/material.dart';
 
 /// The main screen of the AP Python Launcher application.
-class LauncherScreen extends StatefulWidget {
-  /// Creates a [LauncherScreen].
-  const LauncherScreen({required this.config, super.key});
+class LauncherPage extends StatefulWidget {
+  /// Creates a [LauncherPage].
+  const LauncherPage({required this.config, super.key});
 
   /// Runtime configuration passed down from `main`.
   final Config config;
 
   @override
-  State<LauncherScreen> createState() => _LauncherScreenState();
+  State<LauncherPage> createState() => _LauncherPageState();
 }
 
-class _LauncherScreenState extends State<LauncherScreen> {
+class _LauncherPageState extends State<LauncherPage> {
   late final LauncherController _controller = LauncherController(
     config: widget.config,
   );

@@ -1,6 +1,5 @@
 import 'package:ap_python_launcher_app/config.dart' show Config;
-import 'package:ap_python_launcher_app/launcher_screen.dart'
-    show LauncherScreen;
+import 'package:ap_python_launcher_app/launcher_page.dart' show LauncherPage;
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonThemeData;
 import 'package:flutter/material.dart';
@@ -26,7 +25,7 @@ class ApPythonLauncherApp extends StatelessWidget {
       title: 'AP Python Launcher',
       theme: BisonThemeData.dark(),
       darkTheme: BisonThemeData.dark(),
-      home: LauncherScreen(config: config),
+      home: LauncherPage(config: config),
     );
   }
 }

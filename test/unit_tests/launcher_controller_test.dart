@@ -2,9 +2,9 @@ import 'dart:async' show Completer;
 import 'dart:collection' show Queue;
 
 import 'package:ap_python_launcher_app/api_service.dart' as api;
-import 'package:ap_python_launcher_app/launcher/launcher_controller.dart'
+import 'package:ap_python_launcher_app/launcher/controller.dart'
     show LauncherController;
-import 'package:ap_python_launcher_app/launcher/launcher_models.dart' as models;
+import 'package:ap_python_launcher_app/launcher/models.dart' as models;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes.dart'
@@ -61,7 +61,10 @@ void main() {
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
 
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
       await c.refresh(notify.call);
 
       expect(c.apps.length, 2);
@@ -86,7 +89,10 @@ void main() {
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
 
-      final c = LauncherController(apiService: failingApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: failingApi,
+        jobStore: jobs,
+      );
       await c.refresh(notify.call);
 
       expect(c.statusText, 'Refresh failed');
@@ -117,7 +123,10 @@ void main() {
 
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.launch('ap-python/foo', 'latest', notify.call);
 
@@ -180,7 +189,10 @@ void main() {
       final failingApi = _FailingLaunchApiService();
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: failingApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: failingApi,
+        jobStore: jobs,
+      );
 
       await c.launch('ap-python/foo', 'latest', notify.call);
 
@@ -263,7 +275,10 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: checkingApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: checkingApi,
+        jobStore: jobs,
+      );
 
       final restoreFuture = c.restoreJobs(
         const {'ap-python/foo': 'latest'},
@@ -305,7 +320,10 @@ void main() {
       final fakeApi = FakeApiService();
       final jobs = FakeJobStore();
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -318,7 +336,10 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'old');
 
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -347,7 +368,10 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -375,7 +399,10 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 
@@ -394,7 +421,10 @@ void main() {
       await jobs.saveJob('id1', 'ap-python/foo', 'latest');
 
       final notify = NotifyCounter();
-      final c = LauncherController(apiService: fakeApi, jobStore: jobs);
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
 
       await c.restoreJobs(const {'ap-python/foo': 'latest'}, notify.call);
 

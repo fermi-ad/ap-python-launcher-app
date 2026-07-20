@@ -1,6 +1,6 @@
 import 'package:ap_python_launcher_app/api_service.dart' show AppInfo;
-import 'package:ap_python_launcher_app/connect.dart' show openInNewTab;
-import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
+import 'package:ap_python_launcher_app/connect/connect.dart' show openInNewTab;
+import 'package:ap_python_launcher_app/launcher/models.dart'
     show RowState, RowStateKind;
 import 'package:bison_design_system/bison_design_system.dart'
     show BisonButton, BisonContext;
