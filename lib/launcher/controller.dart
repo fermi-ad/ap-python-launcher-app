@@ -4,9 +4,9 @@ import 'dart:convert' show JsonEncoder;
 import 'package:ap_python_launcher_app/api_service.dart' as api;
 import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/job_store.dart' as jobs;
-import 'package:ap_python_launcher_app/launcher/launcher_models.dart'
+import 'package:ap_python_launcher_app/launcher/models.dart'
     show RowState, RowStateKind;
-import 'package:ap_python_launcher_app/launcher/launcher_poller.dart'
+import 'package:ap_python_launcher_app/launcher/poller.dart'
     show LauncherPoller;
 
 /// Manages the business logic for the launcher UI.
