@@ -34,7 +34,9 @@ class Config {
   /// An optional [client] may be supplied to override the default HTTP client,
   /// which is useful in tests.
   static Future<Config> load({final http.Client? client}) async {
-    const definedBaseUrl = String.fromEnvironment('API_BASE_URL');
+    const definedBaseUrl = String.fromEnvironment(
+      'API_BASE_URL',
+    );
 
     if (kDebugMode) {
       debugPrint(
@@ -43,7 +45,10 @@ class Config {
     }
 
     if (definedBaseUrl.isNotEmpty) {
-      return Config.defaults;
+      // Analyzer mistakenly suggests replacing this with the default
+      // constructor
+      // ignore: use_named_constants
+      return const Config._(apiBaseUrl: definedBaseUrl);
     }
 
     try {
@@ -52,9 +57,7 @@ class Config {
           : http.get(Uri.parse('config.json')));
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return Config._(
-          apiBaseUrl: (json['apiBaseUrl'] as String?) ?? '',
-        );
+        return Config._(apiBaseUrl: (json['apiBaseUrl'] as String?) ?? '');
       }
     } on Object catch (e) {
       debugPrint(
