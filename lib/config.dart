@@ -34,7 +34,15 @@ class Config {
   /// An optional [client] may be supplied to override the default HTTP client,
   /// which is useful in tests.
   static Future<Config> load({final http.Client? client}) async {
-    if (client == null && kDebugMode) {
+    const definedBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+    if (kDebugMode) {
+      debugPrint(
+        'Config.load(debug): API_BASE_URL(dart-define)="$definedBaseUrl"',
+      );
+    }
+
+    if (definedBaseUrl.isNotEmpty) {
       return Config.defaults;
     }
 
@@ -53,7 +61,7 @@ class Config {
         'Config.load: could not fetch config.json, using defaults. Error: $e',
       );
     }
-    // Fallback: relative-origin API calls (missing / malformed config file)
+
     return Config.defaults;
   }
 }
