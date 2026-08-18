@@ -1,8 +1,8 @@
 import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/launcher_page.dart' show LauncherPage;
-import 'package:bison_design_system/bison_design_system.dart'
-    show BisonThemeData;
 import 'package:flutter/material.dart';
+import 'package:flutter_controls_core/flutter_controls_core.dart'
+    show BisonThemeData;
 
 /// Entry point for the AP Python Launcher application.
 Future<void> main() async {
