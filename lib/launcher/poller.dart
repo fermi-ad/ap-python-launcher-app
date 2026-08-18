@@ -11,18 +11,12 @@ class LauncherPoller {
   LauncherPoller({
     required final api.ApiService apiService,
     required final jobs.JobStore jobStore,
-    required final Duration pollInterval,
-    required final void Function(String repo, String tag, RowState state)
-    onRowState,
-    required final void Function(String text, void Function() notify) onStatus,
-    final void Function(api.LaunchStatus st, void Function() notify)?
-    onLaunchJson,
+    required this._pollInterval,
+    required this._onRowState,
+    required this._onStatus,
+    this._onLaunchJson,
   }) : _api = apiService,
-       _jobs = jobStore,
-       _pollInterval = pollInterval,
-       _onRowState = onRowState,
-       _onStatus = onStatus,
-       _onLaunchJson = onLaunchJson;
+       _jobs = jobStore;
 
   final api.ApiService _api;
   final jobs.JobStore _jobs;

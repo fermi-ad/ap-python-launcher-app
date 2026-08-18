@@ -2,9 +2,9 @@ import 'package:ap_python_launcher_app/api_service.dart' show AppInfo;
 import 'package:ap_python_launcher_app/connect/connect.dart' show openInNewTab;
 import 'package:ap_python_launcher_app/launcher/models.dart'
     show RowState, RowStateKind;
-import 'package:bison_design_system/bison_design_system.dart'
-    show BisonButton, BisonContext;
 import 'package:flutter/material.dart';
+import 'package:flutter_controls_core/flutter_controls_core.dart'
+    show BisonButton, BisonContext;
 
 /// Displays a status message, rendering any embedded URL as a tappable link.
 class StatusText extends StatelessWidget {
@@ -305,7 +305,7 @@ class LaunchButton extends StatelessWidget {
   Widget build(final BuildContext context) {
     return BisonButton.filled(
       buttonLabel: 'Launch',
-      icon: const Icon(Icons.add),
+      leftIcon: const Icon(Icons.add),
       onPressed: onPressed,
     );
   }
@@ -325,7 +325,7 @@ class EndButton extends StatelessWidget {
   Widget build(final BuildContext context) {
     return BisonButton.destructive(
       buttonLabel: 'End',
-      icon: const Icon(Icons.delete_outline),
+      leftIcon: const Icon(Icons.delete_outline),
       onPressed: onPressed,
     );
   }
@@ -349,7 +349,7 @@ class ConnectButton extends StatelessWidget {
       ),
       child: BisonButton.filled(
         buttonLabel: 'Connect',
-        icon: const Icon(Icons.open_in_new),
+        leftIcon: const Icon(Icons.open_in_new),
         onPressed: () => openInNewTab(url),
       ),
     );

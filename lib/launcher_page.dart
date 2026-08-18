@@ -5,8 +5,9 @@ import 'package:ap_python_launcher_app/launcher/controller.dart'
     show LauncherController;
 import 'package:ap_python_launcher_app/launcher/widgets.dart'
     show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
-import 'package:bison_design_system/bison_design_system.dart' show BisonButton;
 import 'package:flutter/material.dart';
+import 'package:flutter_controls_core/flutter_controls_core.dart'
+    show BisonButton;
 
 /// The main screen of the AP Python Launcher application.
 class LauncherPage extends StatefulWidget {

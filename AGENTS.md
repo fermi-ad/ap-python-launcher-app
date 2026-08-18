@@ -5,4 +5,3 @@
 # Rules
 
   - When making code changes, do **not** add comments that only exist to explain context about why the change was made, mention details about an earlier version of the code, or implicitly compare the current state to the previous state.
-  - Use fvm when running Flutter commands. If you don't have access to the fvm command, run Flutter with .fvm/flutter_sdk/bin/flutter instead.

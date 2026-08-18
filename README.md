@@ -4,10 +4,10 @@ Flutter web UI for the AP Python Launcher.
 
 ## Getting Started
 
-Install the pinned Flutter SDK via [FVM](https://fvm.app/) (see [`.fvmrc`](.fvmrc:1)), then fetch dependencies:
+Fetch dependencies:
 
 ```bash
-fvm flutter pub get
+flutter pub get
 ```
 
 Set up the pre-commit hook:
@@ -19,17 +19,17 @@ dart run tool/setup_git_hooks.dart
 ## Run
 
 ```bash
-fvm flutter run -d chrome
+flutter run -d web-server --web-port 14500
 ```
 
 ## Test
 
 ```bash
-fvm flutter test
+flutter test
 ```
 
 ## Build (web)
 
 ```bash
-fvm flutter build web
+flutter build web
 ```
