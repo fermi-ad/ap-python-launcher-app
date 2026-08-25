@@ -2,6 +2,7 @@ import 'dart:async' show Future;
 import 'dart:convert' show JsonEncoder;
 
 import 'package:ap_python_launcher_app/api_service.dart' as api;
+import 'package:ap_python_launcher_app/auth_service.dart' as auth;
 import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/job_store.dart' as jobs;
 import 'package:ap_python_launcher_app/launcher/models.dart'
@@ -25,13 +26,16 @@ class LauncherController {
   LauncherController({
     Config config = Config.defaults,
     final api.ApiService? apiService,
+    final auth.AuthService? authService,
     final jobs.JobStore? jobStore,
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 60),
   }) : _api = apiService ?? api.HttpApiService(baseUrl: config.apiBaseUrl),
+       _auth = authService ?? auth.HttpAuthService(config: config),
        _jobs = jobStore ?? jobs.JobStore();
   final api.ApiService _api;
+  final auth.AuthService _auth;
   final jobs.JobStore _jobs;
 
   /// How often active jobs are polled for status updates.
@@ -55,6 +59,14 @@ class LauncherController {
 
   final Map<String, RowState> _rowStates = {};
   String? _launchJsonTrackingId;
+
+  auth.AuthStatus? _authStatus;
+
+  bool get isAuthenticated => _authStatus?.authenticated ?? false;
+
+  void login() => _auth.login();
+
+  void logout() => _auth.logout();
 
   late final LauncherPoller _poller = LauncherPoller(
     apiService: _api,
@@ -113,6 +125,8 @@ class LauncherController {
   Future<void> refresh(final void Function() notify) async {
     _setStatus('Refreshing...', notify);
     try {
+      _authStatus = await _auth.getAuthStatus();
+
       final loaded = await _api.getApps();
       apps = loaded;
 

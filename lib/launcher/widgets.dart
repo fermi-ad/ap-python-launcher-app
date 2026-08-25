@@ -124,6 +124,8 @@ class AppsTable extends StatelessWidget {
     required this.rowStateFor,
     required this.onLaunch,
     required this.onEnd,
+    required this.isAuthenticated,
+    required this.onLogin,
     super.key,
   });
 
@@ -138,6 +140,10 @@ class AppsTable extends StatelessWidget {
 
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
+
+  final bool isAuthenticated;
+
+  final VoidCallback onLogin;
 
   static String _statusText(final RowState state) {
     final override = state.statusOverride;
@@ -160,10 +166,16 @@ class AppsTable extends StatelessWidget {
     final String tag, {
     final double? width,
   }) {
-    final endButton = EndButton(
-      onPressed: (state.kind == RowStateKind.ending || state.launchId == null)
-          ? null
-          : () => onEnd(state.launchId!, repo, tag),
+    final endDisabled =
+        !isAuthenticated ||
+        state.kind == RowStateKind.ending ||
+        state.launchId == null;
+
+    final endButton = Tooltip(
+      message: isAuthenticated ? '' : 'Log in to end running apps',
+      child: EndButton(
+        onPressed: endDisabled ? null : () => onEnd(state.launchId!, repo, tag),
+      ),
     );
 
     Widget inner;
@@ -190,7 +202,12 @@ class AppsTable extends StatelessWidget {
         state.kind == RowStateKind.ending) {
       inner = endButton;
     } else {
-      inner = LaunchButton(onPressed: () => onLaunch(repo, tag));
+      inner = Tooltip(
+        message: isAuthenticated ? '' : 'Log in to launch apps',
+        child: LaunchButton(
+          onPressed: isAuthenticated ? () => onLaunch(repo, tag) : null,
+        ),
+      );
     }
 
     return width != null ? SizedBox(width: width, child: inner) : inner;
@@ -296,10 +313,12 @@ class AppsTable extends StatelessWidget {
 /// A button that triggers a launch action.
 class LaunchButton extends StatelessWidget {
   /// Creates a [LaunchButton] with the given [onPressed] callback.
+  ///
+  /// Pass `null` for [onPressed] to disable the button.
   const LaunchButton({required this.onPressed, super.key});
 
-  /// Called when the button is tapped.
-  final VoidCallback onPressed;
+  /// Called when the button is tapped, or `null` to disable the button.
+  final VoidCallback? onPressed;
 
   @override
   Widget build(final BuildContext context) {

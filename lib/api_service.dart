@@ -2,6 +2,8 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 
 import 'package:http/http.dart' show Client, Request, Response;
 
+import 'http_client/http_client.dart' show createHttpClient;
+
 /// Exception thrown when an HTTP API call returns a non-2xx status code.
 ///
 /// The backend returns RFC 7807 Problem Details JSON for all error responses.
@@ -180,7 +182,7 @@ class HttpApiService implements ApiService {
   /// An optional HTTP [client] can be injected for testing.
   HttpApiService({final String baseUrl = '', final Client? client})
     : _baseUri = Uri.parse(baseUrl.isEmpty ? '' : baseUrl),
-      _client = client ?? Client();
+      _client = client ?? createHttpClient();
 
   final Uri _baseUri;
   final Client _client;

@@ -4,3 +4,7 @@ import 'package:web/web.dart' show window;
 void openInNewTab(final String url) {
   window.open(url, '_blank');
 }
+
+void navigateTo(final String url) {
+  window.location.href = url;
+}

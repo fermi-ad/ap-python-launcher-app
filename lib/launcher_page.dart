@@ -92,6 +92,8 @@ class _LauncherPageState extends State<LauncherPage> {
                           rowStateFor: _controller.rowStateFor,
                           onLaunch: _launch,
                           onEnd: _end,
+                          isAuthenticated: _controller.isAuthenticated,
+                          onLogin: _controller.login,
                         ),
                       ],
                     ),
