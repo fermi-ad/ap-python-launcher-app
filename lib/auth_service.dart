@@ -2,13 +2,16 @@ import 'dart:convert' show jsonDecode;
 
 import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/connect/connect.dart' show navigateTo;
+import 'package:ap_python_launcher_app/http_client/http_client.dart'
+    show createHttpClient;
 import 'package:http/http.dart' show Client, Request, Response;
 
-import 'http_client/http_client.dart' show createHttpClient;
-
+/// Represents the authentication state returned by the backend.
 class AuthStatus {
+  /// Creates an [AuthStatus].
   AuthStatus({required this.authenticated, this.subject, this.email});
 
+  /// Deserializes an [AuthStatus] from a JSON response.
   factory AuthStatus.fromJson(final Map<String, dynamic> json) {
     return AuthStatus(
       authenticated: (json['authenticated'] as bool?) ?? false,
@@ -17,20 +20,31 @@ class AuthStatus {
     );
   }
 
+  /// Whether the user has an authenticated session.
   final bool authenticated;
+
+  /// The authenticated subject identifier, when available.
   final String? subject;
+
+  /// The authenticated user's email address, when available.
   final String? email;
 }
 
+/// Defines the authentication actions used by the launcher.
 abstract class AuthService {
+  /// Retrieves the user's current authentication status.
   Future<AuthStatus> getAuthStatus();
 
+  /// Starts the login flow.
   void login();
 
+  /// Starts the logout flow.
   void logout();
 }
 
+/// Implements [AuthService] through the launcher HTTP API.
 class HttpAuthService implements AuthService {
+  /// Creates an [HttpAuthService].
   HttpAuthService({
     Config config = Config.defaults,
     final Client? client,

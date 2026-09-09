@@ -62,10 +62,13 @@ class LauncherController {
 
   auth.AuthStatus? _authStatus;
 
+  /// Whether the current user has an authenticated session.
   bool get isAuthenticated => _authStatus?.authenticated ?? false;
 
+  /// Starts the authentication login flow.
   void login() => _auth.login();
 
+  /// Starts the authentication logout flow.
   void logout() => _auth.logout();
 
   late final LauncherPoller _poller = LauncherPoller(

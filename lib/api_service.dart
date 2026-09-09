@@ -1,8 +1,8 @@
 import 'dart:convert' show jsonDecode, jsonEncode;
 
+import 'package:ap_python_launcher_app/http_client/http_client.dart'
+    show createHttpClient;
 import 'package:http/http.dart' show Client, Request, Response;
-
-import 'http_client/http_client.dart' show createHttpClient;
 
 /// Exception thrown when an HTTP API call returns a non-2xx status code.
 ///

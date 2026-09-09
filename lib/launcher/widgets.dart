@@ -141,8 +141,10 @@ class AppsTable extends StatelessWidget {
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
+  /// Whether the current user has an authenticated session.
   final bool isAuthenticated;
 
+  /// Called when the user requests to log in.
   final VoidCallback onLogin;
 
   static String _statusText(final RowState state) {
