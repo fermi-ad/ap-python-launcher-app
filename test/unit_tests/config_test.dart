@@ -13,19 +13,22 @@ void main() {
   });
 
   group('Config.load', () {
-    test('returns apiBaseUrl from a 200 config.json response', () async {
-      const url = 'https://example.fnal.gov/api';
-      final client = MockClient(
-        (_) async => Response(
-          jsonEncode({'apiBaseUrl': url}),
-          200,
-        ),
-      );
+    test(
+      'fetches /config.json and returns apiBaseUrl from a 200 response',
+      () async {
+        const url = 'https://example.fnal.gov/api';
+        final client = MockClient(
+          (request) async {
+            expect(request.url.path, '/config.json');
+            return Response(jsonEncode({'apiBaseUrl': url}), 200);
+          },
+        );
 
-      final config = await Config.load(client: client);
+        final config = await Config.load(client: client);
 
-      expect(config.apiBaseUrl, url);
-    });
+        expect(config.apiBaseUrl, url);
+      },
+    );
 
     test(
       'falls back to defaults when apiBaseUrl is absent from JSON',
