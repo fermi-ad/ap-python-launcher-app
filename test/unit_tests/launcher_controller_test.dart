@@ -70,7 +70,7 @@ void main() {
       await c.refresh(notify.call);
 
       expect(c.apps.length, 2);
-      expect(c.statusText, 'Loaded 2 app(s)');
+      expect(c.statusText, 'Loaded 2 apps');
       expect(notify.count, greaterThan(0));
 
       expect(
@@ -81,6 +81,22 @@ void main() {
         c.rowStateFor('ap-python/bar', 'latest').kind,
         models.RowStateKind.idle,
       );
+    });
+
+    test('uses singular app wording for one loaded app', () async {
+      final fakeApi = FakeApiService()
+        ..apps = [
+          api.AppInfo(repo: 'ap-python/foo', tag: 'latest', allTags: const []),
+        ];
+      final c = LauncherController(
+        apiService: fakeApi,
+        authService: FakeAuthService(),
+        jobStore: FakeJobStore(),
+      );
+
+      await c.refresh(NotifyCounter().call);
+
+      expect(c.statusText, 'Loaded 1 app');
     });
 
     test('sets error status and launchJson on failure', () async {

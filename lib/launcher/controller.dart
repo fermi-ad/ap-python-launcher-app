@@ -146,7 +146,10 @@ class LauncherController {
       };
       await _restoreJobs(currentTags, notify);
 
-      _setStatus('Loaded ${loaded.length} app(s)', notify);
+      _setStatus(
+        'Loaded ${loaded.length} app${loaded.length == 1 ? '' : 's'}',
+        notify,
+      );
     } on Exception catch (e) {
       _setStatus('Refresh failed', notify);
       _setLaunchJson({'error': e.toString()}, notify);

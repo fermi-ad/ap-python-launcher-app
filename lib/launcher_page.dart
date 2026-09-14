@@ -78,12 +78,26 @@ class _LauncherPageState extends State<LauncherPage> {
                           children: [
                             BisonButton.filled(
                               buttonLabel: 'Refresh',
+                              leftIcon: const Icon(Icons.refresh),
                               onPressed: _refresh,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: StatusText(text: _controller.statusText),
                             ),
+                            const SizedBox(width: 12),
+                            if (_controller.isAuthenticated)
+                              BisonButton.outlined(
+                                buttonLabel: 'Log out',
+                                leftIcon: const Icon(Icons.logout),
+                                onPressed: _controller.logout,
+                              )
+                            else
+                              BisonButton.filled(
+                                buttonLabel: 'Log in',
+                                leftIcon: const Icon(Icons.login),
+                                onPressed: _controller.login,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 12),
