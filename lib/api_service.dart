@@ -1,5 +1,7 @@
 import 'dart:convert' show jsonDecode, jsonEncode;
 
+import 'package:ap_python_launcher_app/http_client/http_client.dart'
+    show createHttpClient;
 import 'package:http/http.dart' show Client, Request, Response;
 
 /// Exception thrown when an HTTP API call returns a non-2xx status code.
@@ -180,7 +182,7 @@ class HttpApiService implements ApiService {
   /// An optional HTTP [client] can be injected for testing.
   HttpApiService({final String baseUrl = '', final Client? client})
     : _baseUri = Uri.parse(baseUrl.isEmpty ? '' : baseUrl),
-      _client = client ?? Client();
+      _client = client ?? createHttpClient();
 
   final Uri _baseUri;
   final Client _client;

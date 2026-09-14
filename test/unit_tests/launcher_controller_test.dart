@@ -7,6 +7,7 @@ import 'package:ap_python_launcher_app/launcher/controller.dart'
 import 'package:ap_python_launcher_app/launcher/models.dart' as models;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_auth_service.dart' show FakeAuthService;
 import 'fakes.dart'
     show FakeApiService, FakeJobStore, NotifyCounter, pumpMicrotasks;
 
@@ -63,12 +64,13 @@ void main() {
 
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
       await c.refresh(notify.call);
 
       expect(c.apps.length, 2);
-      expect(c.statusText, 'Loaded 2 app(s)');
+      expect(c.statusText, 'Loaded 2 apps');
       expect(notify.count, greaterThan(0));
 
       expect(
@@ -81,6 +83,22 @@ void main() {
       );
     });
 
+    test('uses singular app wording for one loaded app', () async {
+      final fakeApi = FakeApiService()
+        ..apps = [
+          api.AppInfo(repo: 'ap-python/foo', tag: 'latest', allTags: const []),
+        ];
+      final c = LauncherController(
+        apiService: fakeApi,
+        authService: FakeAuthService(),
+        jobStore: FakeJobStore(),
+      );
+
+      await c.refresh(NotifyCounter().call);
+
+      expect(c.statusText, 'Loaded 1 app');
+    });
+
     test('sets error status and launchJson on failure', () async {
       final fakeApi = FakeApiService();
       fakeApi.launchStatusErrors['__apps__'] = Exception('boom');
@@ -91,6 +109,7 @@ void main() {
 
       final c = LauncherController(
         apiService: failingApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
       await c.refresh(notify.call);
@@ -125,6 +144,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -191,6 +211,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: failingApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -277,6 +298,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: checkingApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -322,6 +344,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -338,6 +361,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -370,6 +394,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -401,6 +426,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 
@@ -423,6 +449,7 @@ void main() {
       final notify = NotifyCounter();
       final c = LauncherController(
         apiService: fakeApi,
+        authService: FakeAuthService(),
         jobStore: jobs,
       );
 

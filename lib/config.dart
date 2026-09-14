@@ -29,7 +29,7 @@ class Config {
   /// Loads and returns the runtime configuration.
   ///
   /// In debug mode, returns immediately with [apiBaseUrl] set to `''`.
-  /// In release/profile mode, fetches `config.json` from the current origin.
+  /// In release/profile mode, fetches `/config.json` from the current origin.
   ///
   /// An optional [client] may be supplied to override the default HTTP client,
   /// which is useful in tests.
@@ -51,14 +51,21 @@ class Config {
       return const Config._(apiBaseUrl: definedBaseUrl);
     }
 
+    const configUri = '/config.json';
+
     try {
+      debugPrint('Config.load: fetching $configUri');
       final response = await (client != null
-          ? client.get(Uri.parse('config.json'))
-          : http.get(Uri.parse('config.json')));
+          ? client.get(Uri.parse(configUri))
+          : http.get(Uri.parse(configUri)));
+      debugPrint(
+        'Config.load: $configUri responded with HTTP ${response.statusCode}',
+      );
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
         return Config._(apiBaseUrl: (json['apiBaseUrl'] as String?) ?? '');
       }
+      debugPrint('Config.load: using defaults after non-200 config response');
     } on Object catch (e) {
       debugPrint(
         'Config.load: could not fetch config.json, using defaults. Error: $e',

@@ -11,3 +11,8 @@ import 'package:ap_python_launcher_app/connect/connect_stub.dart'
 ///
 /// On non-web platforms and in tests this is a no-op.
 void openInNewTab(final String url) => impl.openInNewTab(url);
+
+/// Navigates the current tab to [url].
+///
+/// On non-web platforms and in tests this is a no-op.
+void navigateTo(final String url) => impl.navigateTo(url);

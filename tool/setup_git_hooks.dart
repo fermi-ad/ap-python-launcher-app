@@ -7,9 +7,18 @@ import 'dart:io' show File, Platform, Process, exitCode, stderr, stdout;
 Future<void> main() async {
   final preCommitHook = File('.git/hooks/pre-commit');
   await preCommitHook.parent.create();
-  await preCommitHook.writeAsString('''
+  await preCommitHook.writeAsString(r'''
 #!/bin/sh
-exec dart run dart_pre_commit # specify custom options here
+
+repo_root="$(git rev-parse --show-toplevel)" || exit 1
+fvm_dart="$repo_root/.fvm/flutter_sdk/bin/dart"
+
+if [ -x "$fvm_dart" ]; then
+  export PATH="$(dirname "$fvm_dart"):$PATH"
+  exec "$fvm_dart" run dart_pre_commit
+fi
+
+exec dart run dart_pre_commit
 ''');
 
   if (!Platform.isWindows) {
