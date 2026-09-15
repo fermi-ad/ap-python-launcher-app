@@ -49,6 +49,7 @@ void main() {
                   api.AppInfo(
                     repo: 'ap-python/foo',
                     tag: 'latest',
+                    tagTimestamp: '2026-09-15T16:00:00Z',
                     allTags: const [],
                   ),
                   api.AppInfo(
@@ -70,9 +71,9 @@ void main() {
       expect(find.byType(DataTable), findsOneWidget);
       expect(find.text('foo'), findsOneWidget);
       expect(find.text('bar'), findsOneWidget);
-      expect(find.text('Tag'), findsOneWidget);
-      expect(find.text('latest'), findsOneWidget);
-      expect(find.text('v1'), findsOneWidget);
+      expect(find.text('Updated'), findsOneWidget);
+      expect(find.textContaining('Sep'), findsOneWidget);
+      expect(find.byType(Tooltip), findsNWidgets(3));
       expect(find.text('Launch'), findsNWidgets(2));
     });
 
@@ -184,7 +185,9 @@ void main() {
 
       expect(find.byType(DataTable), findsNothing);
       expect(find.text('foo'), findsOneWidget);
-      expect(find.text('Tag: latest'), findsOneWidget);
+      expect(find.text('Tag: latest'), findsNothing);
+      expect(find.text('Pushed: —'), findsOneWidget);
+      expect(find.byType(Tooltip), findsOneWidget);
       expect(find.textContaining('Status:'), findsOneWidget);
       expect(find.text('Launch'), findsOneWidget);
     });

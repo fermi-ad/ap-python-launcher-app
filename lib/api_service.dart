@@ -43,8 +43,13 @@ class ApiException implements Exception {
 
 /// Metadata about a launchable application returned by the API.
 class AppInfo {
-  /// Creates an [AppInfo] with the given [repo], [tag], and [allTags].
-  AppInfo({required this.repo, required this.tag, required this.allTags});
+  /// Creates an [AppInfo] with the given app metadata.
+  AppInfo({
+    required this.repo,
+    required this.tag,
+    required this.allTags,
+    this.tagTimestamp,
+  });
 
   /// Deserializes an [AppInfo] from a JSON map.
   factory AppInfo.fromJson(final Map<String, dynamic> json) {
@@ -53,6 +58,7 @@ class AppInfo {
       tag: json['tag'] as String?,
       allTags:
           (json['allTags'] as List?)?.whereType<String>().toList() ?? const [],
+      tagTimestamp: json['tagTimestamp'] as String?,
     );
   }
 
@@ -61,6 +67,9 @@ class AppInfo {
 
   /// The currently selected tag, or `null` if none is set.
   final String? tag;
+
+  /// The RFC 3339 timestamp at which the selected tag was pushed to Harbor.
+  final String? tagTimestamp;
 
   /// All available tags for this app.
   final List<String> allTags;

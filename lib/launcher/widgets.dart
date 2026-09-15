@@ -5,6 +5,7 @@ import 'package:ap_python_launcher_app/launcher/models.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_controls_core/flutter_controls_core.dart'
     show BisonButton, BisonContext;
+import 'package:intl/intl.dart' show DateFormat;
 
 /// Displays a status message, rendering any embedded URL as a tappable link.
 class StatusText extends StatelessWidget {
@@ -139,6 +140,20 @@ class AppsTable extends StatelessWidget {
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
+  static String _formatTimestamp(final String? timestamp) {
+    if (timestamp == null) return '—';
+
+    final dateTime = DateTime.tryParse(timestamp)?.toLocal();
+    return dateTime == null
+        ? timestamp
+        : DateFormat.yMMMd().add_jm().format(dateTime);
+  }
+
+  static String _timezoneDescription() {
+    final localTime = DateTime.now();
+    return 'Timezone: ${localTime.timeZoneName}';
+  }
+
   static String _statusText(final RowState state) {
     final override = state.statusOverride;
     if (override != null && override.isNotEmpty) return override;
@@ -217,14 +232,24 @@ class AppsTable extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      repoDisplay,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            repoDisplay,
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Tag: $tag',
+                          child: const Icon(Icons.info_outline, size: 18),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tag: $tag',
+                      'Pushed: ${_formatTimestamp(a.tagTimestamp)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 4),
@@ -253,13 +278,29 @@ class AppsTable extends StatelessWidget {
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
               columnSpacing: 24,
-              columns: const [
-                DataColumn(
+              columns: [
+                const DataColumn(
                   label: SizedBox(width: 300, child: Text('Repository')),
                 ),
-                DataColumn(label: SizedBox(width: 120, child: Text('Tag'))),
-                DataColumn(label: SizedBox(width: 120, child: Text('Status'))),
                 DataColumn(
+                  label: SizedBox(
+                    width: 210,
+                    child: Row(
+                      children: [
+                        const Text('Updated'),
+                        const SizedBox(width: 4),
+                        Tooltip(
+                          message: _timezoneDescription(),
+                          child: const Icon(Icons.info_outline, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const DataColumn(
+                  label: SizedBox(width: 120, child: Text('Status')),
+                ),
+                const DataColumn(
                   label: SizedBox(width: actionsWidth, child: Text('Actions')),
                 ),
               ],
@@ -276,13 +317,31 @@ class AppsTable extends StatelessWidget {
                     DataCell(
                       SizedBox(
                         width: 300,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                repoDisplay,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Tooltip(
+                              message: 'Tag: $tag',
+                              child: const Icon(Icons.info_outline, size: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 210,
                         child: Text(
-                          repoDisplay,
+                          _formatTimestamp(a.tagTimestamp),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
-                    DataCell(SizedBox(width: 120, child: Text(tag))),
                     DataCell(
                       SizedBox(width: 120, child: Text(_statusText(state))),
                     ),
