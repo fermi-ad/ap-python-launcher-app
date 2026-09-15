@@ -70,6 +70,9 @@ void main() {
       expect(find.byType(DataTable), findsOneWidget);
       expect(find.text('foo'), findsOneWidget);
       expect(find.text('bar'), findsOneWidget);
+      expect(find.text('Tag'), findsOneWidget);
+      expect(find.text('latest'), findsOneWidget);
+      expect(find.text('v1'), findsOneWidget);
       expect(find.text('Launch'), findsNWidgets(2));
     });
 
@@ -181,6 +184,7 @@ void main() {
 
       expect(find.byType(DataTable), findsNothing);
       expect(find.text('foo'), findsOneWidget);
+      expect(find.text('Tag: latest'), findsOneWidget);
       expect(find.textContaining('Status:'), findsOneWidget);
       expect(find.text('Launch'), findsOneWidget);
     });

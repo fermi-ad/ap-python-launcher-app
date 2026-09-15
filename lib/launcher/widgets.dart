@@ -224,6 +224,11 @@ class AppsTable extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
+                      'Tag: $tag',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
                       'Status: ${_statusText(state)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -252,6 +257,7 @@ class AppsTable extends StatelessWidget {
                 DataColumn(
                   label: SizedBox(width: 300, child: Text('Repository')),
                 ),
+                DataColumn(label: SizedBox(width: 120, child: Text('Tag'))),
                 DataColumn(label: SizedBox(width: 120, child: Text('Status'))),
                 DataColumn(
                   label: SizedBox(width: actionsWidth, child: Text('Actions')),
@@ -276,6 +282,7 @@ class AppsTable extends StatelessWidget {
                         ),
                       ),
                     ),
+                    DataCell(SizedBox(width: 120, child: Text(tag))),
                     DataCell(
                       SizedBox(width: 120, child: Text(_statusText(state))),
                     ),
