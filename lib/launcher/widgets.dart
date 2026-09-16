@@ -249,7 +249,7 @@ class AppsTable extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Pushed: ${_formatTimestamp(a.tagTimestamp)}',
+                      'Updated: ${_formatTimestamp(a.tagTimestamp)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 4),

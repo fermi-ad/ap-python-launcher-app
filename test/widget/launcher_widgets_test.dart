@@ -185,8 +185,7 @@ void main() {
 
       expect(find.byType(DataTable), findsNothing);
       expect(find.text('foo'), findsOneWidget);
-      expect(find.text('Tag: latest'), findsNothing);
-      expect(find.text('Pushed: —'), findsOneWidget);
+      expect(find.text('Updated: —'), findsOneWidget);
       expect(find.byType(Tooltip), findsOneWidget);
       expect(find.textContaining('Status:'), findsOneWidget);
       expect(find.text('Launch'), findsOneWidget);
