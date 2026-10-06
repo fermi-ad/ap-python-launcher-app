@@ -1,8 +1,7 @@
 # Use NGINX as the base image
 FROM nginx:1.30
 
-# Copy the NGINX configuration and built web files with non-root ownership.
-COPY --chown=nginx:nginx nginx.conf /etc/nginx/nginx.conf
+# Copy built web files with non-root ownership.
 COPY --chown=nginx:nginx ./build/web /usr/share/nginx/html
 
 # Allow NGINX to bind to port 80 and write to the needed directories
