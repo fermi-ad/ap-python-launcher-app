@@ -18,7 +18,7 @@ class StatusText extends StatelessWidget {
   static final RegExp _urlRegex = RegExp(r'https?://\S+');
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     final match = _urlRegex.firstMatch(text);
     final url = match?.group(0);
 
@@ -72,7 +72,7 @@ class LaunchErrorBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     final tokens = context.bison;
     return Semantics(
       liveRegion: true,
@@ -114,7 +114,7 @@ class Header extends StatelessWidget {
   const Header({super.key});
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -145,7 +145,7 @@ class Panel extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     final tokens = context.bison;
 
     return Card(
@@ -185,7 +185,7 @@ class AppsTable extends StatelessWidget {
   /// Called when the user requests to end the job identified by a launch ID.
   final Future<void> Function(String launchId, String repo, String tag) onEnd;
 
-  static String _formatTimestamp(final String? timestamp) {
+  static String _formatTimestamp(String? timestamp) {
     if (timestamp == null) return '—';
 
     final dateTime = DateTime.tryParse(timestamp)?.toLocal();
@@ -199,7 +199,7 @@ class AppsTable extends StatelessWidget {
     return 'Timezone: ${localTime.timeZoneName}';
   }
 
-  static String _statusText(final RowState state) {
+  static String _statusText(RowState state) {
     final override = state.statusOverride;
     if (override != null && override.isNotEmpty) return override;
 
@@ -216,10 +216,10 @@ class AppsTable extends StatelessWidget {
   }
 
   Widget _buildAction(
-    final RowState state,
-    final String repo,
-    final String tag, {
-    final double? width,
+    RowState state,
+    String repo,
+    String tag, {
+    double? width,
   }) {
     final endButton = EndButton(
       onPressed: (state.kind == RowStateKind.ending || state.launchId == null)
@@ -258,14 +258,14 @@ class AppsTable extends StatelessWidget {
   }
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (final context, final constraints) {
+      builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 720;
 
         if (isNarrow) {
           return Column(
-            children: apps.map((final a) {
+            children: apps.map((a) {
               final tag = a.tag ?? 'latest';
               final state = rowStateFor(a.repo, tag);
               final repoDisplay = a.repo.replaceFirst(
@@ -350,7 +350,7 @@ class AppsTable extends StatelessWidget {
                   label: SizedBox(width: actionsWidth, child: Text('Actions')),
                 ),
               ],
-              rows: apps.map((final a) {
+              rows: apps.map((a) {
                 final tag = a.tag ?? 'latest';
                 final state = rowStateFor(a.repo, tag);
                 final repoDisplay = a.repo.replaceFirst(
@@ -414,7 +414,7 @@ class LaunchButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return BisonButton.filled(
       buttonLabel: 'Launch',
       leftIcon: const Icon(Icons.add),
@@ -434,7 +434,7 @@ class EndButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return BisonButton.destructive(
       buttonLabel: 'End',
       leftIcon: const Icon(Icons.delete_outline),
@@ -452,7 +452,7 @@ class ConnectButton extends StatelessWidget {
   final String url;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     final success = Theme.of(context).colorScheme.tertiary;
 
     return Theme(
@@ -477,7 +477,7 @@ class LaunchStatusPanel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     final tokens = context.bison;
 
     return Container(

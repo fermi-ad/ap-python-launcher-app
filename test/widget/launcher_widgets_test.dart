@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('StatusText', () {
-    testWidgets('renders plain text when no url present', (final tester) async {
+    testWidgets('renders plain text when no url present', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(body: StatusText(text: 'Ready')),
@@ -20,7 +20,7 @@ void main() {
     });
 
     testWidgets('renders url as tappable text when url present', (
-      final tester,
+      tester,
     ) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -36,7 +36,7 @@ void main() {
   });
 
   group('AppsTable', () {
-    testWidgets('renders one row per app (wide layout)', (final tester) async {
+    testWidgets('renders one row per app (wide layout)', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: BisonThemeData.dark(),
@@ -58,10 +58,10 @@ void main() {
                     allTags: const [],
                   ),
                 ],
-                rowStateFor: (final repo, final tag) =>
+                rowStateFor: (repo, tag) =>
                     const models.RowState(kind: models.RowStateKind.idle),
-                onLaunch: (final repo, final tag) async {},
-                onEnd: (final launchId, final repo, final tag) async {},
+                onLaunch: (repo, tag) async {},
+                onEnd: (launchId, repo, tag) async {},
               ),
             ),
           ),
@@ -77,8 +77,8 @@ void main() {
       expect(find.text('Launch'), findsNWidgets(2));
     });
 
-    testWidgets('shows Connect + End when row is ready', (final tester) async {
-      models.RowState stateFor(final String repo, final String tag) {
+    testWidgets('shows Connect + End when row is ready', (tester) async {
+      models.RowState stateFor(String repo, String tag) {
         return const models.RowState(
           kind: models.RowStateKind.ready,
           launchId: 'id1',
@@ -104,8 +104,8 @@ void main() {
                     ),
                   ],
                   rowStateFor: stateFor,
-                  onLaunch: (final repo, final tag) async {},
-                  onEnd: (final launchId, final repo, final tag) async {},
+                  onLaunch: (repo, tag) async {},
+                  onEnd: (launchId, repo, tag) async {},
                 ),
               ),
             ),
@@ -118,8 +118,8 @@ void main() {
       expect(find.text('Launch'), findsNothing);
     });
 
-    testWidgets('shows End disabled when ending', (final tester) async {
-      models.RowState stateFor(final String repo, final String tag) {
+    testWidgets('shows End disabled when ending', (tester) async {
+      models.RowState stateFor(String repo, String tag) {
         return const models.RowState(
           kind: models.RowStateKind.ending,
           launchId: 'id1',
@@ -142,8 +142,8 @@ void main() {
                   ),
                 ],
                 rowStateFor: stateFor,
-                onLaunch: (final repo, final tag) async {},
-                onEnd: (final launchId, final repo, final tag) async {},
+                onLaunch: (repo, tag) async {},
+                onEnd: (launchId, repo, tag) async {},
               ),
             ),
           ),
@@ -154,7 +154,7 @@ void main() {
       expect(endButton, isNotNull);
     });
 
-    testWidgets('renders narrow layout as cards', (final tester) async {
+    testWidgets('renders narrow layout as cards', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: BisonThemeData.dark(),
@@ -172,10 +172,10 @@ void main() {
                       allTags: const [],
                     ),
                   ],
-                  rowStateFor: (final repo, final tag) =>
+                  rowStateFor: (repo, tag) =>
                       const models.RowState(kind: models.RowStateKind.idle),
-                  onLaunch: (final repo, final tag) async {},
-                  onEnd: (final launchId, final repo, final tag) async {},
+                  onLaunch: (repo, tag) async {},
+                  onEnd: (launchId, repo, tag) async {},
                 ),
               ),
             ),

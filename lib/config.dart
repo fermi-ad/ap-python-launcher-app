@@ -33,7 +33,7 @@ class Config {
   ///
   /// An optional [client] may be supplied to override the default HTTP client,
   /// which is useful in tests.
-  static Future<Config> load({final http.Client? client}) async {
+  static Future<Config> load({http.Client? client}) async {
     const definedBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
     );

@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('failed row shows Failed and allows launching again', (
-    final tester,
+    tester,
   ) async {
     var launches = 0;
     await tester.pumpWidget(
@@ -27,13 +27,13 @@ void main() {
                   allTags: const [],
                 ),
               ],
-              rowStateFor: (final repo, final tag) => const RowState(
+              rowStateFor: (repo, tag) => const RowState(
                 kind: RowStateKind.failed,
               ),
-              onLaunch: (final repo, final tag) async {
+              onLaunch: (repo, tag) async {
                 launches++;
               },
-              onEnd: (final id, final repo, final tag) async {},
+              onEnd: (id, repo, tag) async {},
             ),
           ),
         ),
@@ -49,9 +49,9 @@ void main() {
   });
 
   testWidgets('one persistent banner displays the latest error', (
-    final tester,
+    tester,
   ) async {
-    Widget build(final String? error) => MaterialApp(
+    Widget build(String? error) => MaterialApp(
       theme: BisonThemeData.dark(),
       home: Scaffold(
         body: Column(

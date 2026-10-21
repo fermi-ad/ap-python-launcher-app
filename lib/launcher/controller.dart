@@ -24,8 +24,8 @@ class LauncherController {
   /// tracking and returning the row to idle.
   LauncherController({
     Config config = Config.defaults,
-    final api.ApiService? apiService,
-    final jobs.JobStore? jobStore,
+    api.ApiService? apiService,
+    jobs.JobStore? jobStore,
     this.pollInterval = const Duration(seconds: 2),
     this.endPollInterval = const Duration(seconds: 2),
     this.endTimeout = const Duration(seconds: 60),
@@ -63,26 +63,25 @@ class LauncherController {
     apiService: _api,
     jobStore: _jobs,
     pollInterval: pollInterval,
-    onRowState: (final repo, final tag, final state) =>
-        _rowStates[_key(repo, tag)] = state,
+    onRowState: (repo, tag, state) => _rowStates[_key(repo, tag)] = state,
     onStatus: _setStatus,
     onLaunchJson: _setLaunchJsonFromStatus,
     onFailure: _setLaunchError,
   );
 
   void _setLaunchError(
-    final String repo,
-    final String message,
-    final void Function() notify,
+    String repo,
+    String message,
+    void Function() notify,
   ) {
     launchError = '$repo: $message';
     notify();
   }
 
-  String _key(final String repo, final String tag) => '$repo:$tag';
+  String _key(String repo, String tag) => '$repo:$tag';
 
   /// Returns the current [RowState] for the given [repo] and [tag].
-  RowState rowStateFor(final String repo, final String tag) {
+  RowState rowStateFor(String repo, String tag) {
     return _rowStates[_key(repo, tag)] ??
         const RowState(kind: RowStateKind.idle);
   }
@@ -92,29 +91,29 @@ class LauncherController {
     _poller.dispose();
   }
 
-  void _setStatus(final String text, final void Function() notify) {
+  void _setStatus(String text, void Function() notify) {
     statusText = text;
     notify();
   }
 
-  void _setLaunchJson(final Object obj, final void Function() notify) {
+  void _setLaunchJson(Object obj, void Function() notify) {
     launchJson = const JsonEncoder.withIndent('  ').convert(obj);
     notify();
   }
 
   void _setLaunchJsonFromStatus(
-    final api.LaunchStatus st,
-    final void Function() notify,
+    api.LaunchStatus st,
+    void Function() notify,
   ) {
     if (_launchJsonTrackingId != st.launchId) return;
     _setLaunchJson(st.raw, notify);
   }
 
   void _setRowState(
-    final String repo,
-    final String tag,
-    final RowState state,
-    final void Function() notify,
+    String repo,
+    String tag,
+    RowState state,
+    void Function() notify,
   ) {
     _rowStates[_key(repo, tag)] = state;
     notify();
@@ -123,7 +122,7 @@ class LauncherController {
   /// Fetches the app list from the API and restores any persisted jobs.
   ///
   /// Calls [notify] after each state change so the UI can rebuild.
-  Future<void> refresh(final void Function() notify) async {
+  Future<void> refresh(void Function() notify) async {
     _setStatus('Refreshing...', notify);
     try {
       final loaded = await _api.getApps();
@@ -153,9 +152,9 @@ class LauncherController {
   ///
   /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> launch(
-    final String repo,
-    final String tag,
-    final void Function() notify,
+    String repo,
+    String tag,
+    void Function() notify,
   ) async {
     launchError = null;
     _launchJsonTrackingId = null;
@@ -201,10 +200,10 @@ class LauncherController {
   ///
   /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> end(
-    final String launchId,
-    final String repo,
-    final String tag,
-    final void Function() notify,
+    String launchId,
+    String repo,
+    String tag,
+    void Function() notify,
   ) async {
     _setStatus('Ending job...', notify);
     _setRowState(
@@ -233,7 +232,7 @@ class LauncherController {
       launchId,
       timeout: endTimeout,
       poll: endPollInterval,
-      onStatus: (final st) => _setLaunchJson(st.raw, notify),
+      onStatus: (st) => _setLaunchJson(st.raw, notify),
     );
 
     await _jobs.removeJob(launchId);
@@ -247,15 +246,15 @@ class LauncherController {
   ///
   /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> restoreJobs(
-    final Map<String, String> currentTags,
-    final void Function() notify,
+    Map<String, String> currentTags,
+    void Function() notify,
   ) async {
     await _restoreJobs(currentTags, notify);
   }
 
   Future<void> _restoreJobs(
-    final Map<String, String> currentTags,
-    final void Function() notify,
+    Map<String, String> currentTags,
+    void Function() notify,
   ) async {
     final saved = await _jobs.loadJobs();
 
@@ -333,10 +332,10 @@ class LauncherController {
   }
 
   void _startPolling(
-    final String launchId,
-    final String repo,
-    final String tag,
-    final void Function() notify,
+    String launchId,
+    String repo,
+    String tag,
+    void Function() notify,
   ) {
     _poller.startTracking(
       launchId,
@@ -347,15 +346,15 @@ class LauncherController {
     );
   }
 
-  void _stopPolling(final String launchId) {
+  void _stopPolling(String launchId) {
     _poller.stopTracking(launchId);
   }
 
   Future<void> _pollUntilEnded(
-    final String launchId, {
-    required final Duration timeout,
-    required final Duration poll,
-    required final void Function(api.LaunchStatus st) onStatus,
+    String launchId, {
+    required Duration timeout,
+    required Duration poll,
+    required void Function(api.LaunchStatus st) onStatus,
   }) async {
     final start = DateTime.now();
 

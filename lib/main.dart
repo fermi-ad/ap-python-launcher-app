@@ -20,7 +20,7 @@ class ApPythonLauncherApp extends StatelessWidget {
   final Config config;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AP Python Launcher',
       theme: BisonThemeData.dark(),
