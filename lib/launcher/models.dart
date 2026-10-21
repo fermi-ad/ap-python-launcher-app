@@ -19,6 +19,9 @@ enum RowStateKind {
   /// A termination request has been sent and is in progress.
   ending,
 
+  /// The launch failed and can be launched again.
+  failed,
+
   /// The job is active, but status updates could not be fetched.
   statusUnavailable,
 }

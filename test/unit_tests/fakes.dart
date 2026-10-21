@@ -28,6 +28,8 @@ class FakeApiService implements ApiService {
   /// map is consulted.
   final Map<String, Queue<LaunchStatus>> launchStatusQueue = {};
 
+  Exception? postLaunchError;
+
   final List<String> postLaunchCalls = [];
   final List<String> getLaunchStatusCalls = [];
   final List<String> deleteLaunchCalls = [];
@@ -38,6 +40,8 @@ class FakeApiService implements ApiService {
   @override
   Future<LaunchResponse> postLaunch(final String repo) async {
     postLaunchCalls.add(repo);
+    final error = postLaunchError;
+    if (error != null) throw error;
     return launchResponse;
   }
 

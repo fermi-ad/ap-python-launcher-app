@@ -53,6 +53,9 @@ class LauncherController {
   /// The pretty-printed JSON of the most recent launch status response.
   String launchJson = 'No new launches';
 
+  /// The latest launch failure, retained until a new launch attempt begins.
+  String? launchError;
+
   final Map<String, RowState> _rowStates = {};
   String? _launchJsonTrackingId;
 
@@ -64,7 +67,17 @@ class LauncherController {
         _rowStates[_key(repo, tag)] = state,
     onStatus: _setStatus,
     onLaunchJson: _setLaunchJsonFromStatus,
+    onFailure: _setLaunchError,
   );
+
+  void _setLaunchError(
+    final String repo,
+    final String message,
+    final void Function() notify,
+  ) {
+    launchError = '$repo: $message';
+    notify();
+  }
 
   String _key(final String repo, final String tag) => '$repo:$tag';
 
@@ -144,6 +157,9 @@ class LauncherController {
     final String tag,
     final void Function() notify,
   ) async {
+    launchError = null;
+    _launchJsonTrackingId = null;
+    _setRowState(repo, tag, const RowState(kind: RowStateKind.pending), notify);
     _setStatus('Launching $repo...', notify);
     try {
       final resp = await _api.postLaunch(repo);
@@ -166,6 +182,17 @@ class LauncherController {
       _startPolling(launchId, repo, resolvedTag, notify);
     } on Exception catch (e) {
       _setLaunchJson({'error': e.toString()}, notify);
+      _setRowState(
+        repo,
+        tag,
+        const RowState(kind: RowStateKind.failed),
+        notify,
+      );
+      _setLaunchError(
+        repo,
+        e is api.ApiException ? e.message : e.toString(),
+        notify,
+      );
       _setStatus('Launch failed', notify);
     }
   }
@@ -263,7 +290,17 @@ class LauncherController {
       final url = st.access.url;
       final accessStatus = st.access.status;
 
-      if (url != null && accessStatus == 'Ready') {
+      if (st.isFailed) {
+        _stopPolling(job.launchId);
+        await _jobs.removeJob(job.launchId);
+        _setRowState(
+          job.repo,
+          job.tag,
+          const RowState(kind: RowStateKind.failed),
+          notify,
+        );
+        _setLaunchError(job.repo, st.failureMessage, notify);
+      } else if (url != null && accessStatus == 'Ready') {
         _setRowState(
           job.repo,
           job.tag,
@@ -275,7 +312,7 @@ class LauncherController {
           notify,
         );
         _startPolling(job.launchId, job.repo, job.tag, notify);
-      } else if (st.status == 'Succeeded' || st.status == 'Failed') {
+      } else if (st.status == 'Succeeded') {
         await _jobs.removeJob(job.launchId);
         _setRowState(
           job.repo,

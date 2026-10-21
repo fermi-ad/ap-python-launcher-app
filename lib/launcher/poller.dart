@@ -11,12 +11,33 @@ class LauncherPoller {
   LauncherPoller({
     required final api.ApiService apiService,
     required final jobs.JobStore jobStore,
-    required this._pollInterval,
-    required this._onRowState,
-    required this._onStatus,
+    required final Duration pollInterval,
+    required final void Function(String repo, String tag, RowState state)
+    onRowState,
+    required final void Function(String text, void Function() notify) onStatus,
+    final void Function(api.LaunchStatus st, void Function() notify)?
+    onLaunchJson,
+    final void Function(String repo, String message, void Function() notify)?
+    onFailure,
+  }) : this._(
+         apiService,
+         jobStore,
+         pollInterval,
+         onRowState,
+         onStatus,
+         onLaunchJson,
+         onFailure,
+       );
+
+  LauncherPoller._(
+    this._api,
+    this._jobs,
+    this._pollInterval,
+    this._onRowState,
+    this._onStatus,
     this._onLaunchJson,
-  }) : _api = apiService,
-       _jobs = jobStore;
+    this._onFailure,
+  );
 
   final api.ApiService _api;
   final jobs.JobStore _jobs;
@@ -25,6 +46,8 @@ class LauncherPoller {
   final void Function(String text, void Function() notify) _onStatus;
   final void Function(api.LaunchStatus st, void Function() notify)?
   _onLaunchJson;
+  final void Function(String repo, String message, void Function() notify)?
+  _onFailure;
 
   final Map<String, _TrackedJob> _trackedJobs = {};
 
@@ -93,6 +116,7 @@ class LauncherPoller {
       for (final entry in entries) {
         final launchId = entry.key;
         final tracked = entry.value;
+        if (!identical(_trackedJobs[launchId], tracked)) continue;
         final status = statusesByLaunchId[launchId];
         if (status == null) {
           await _jobs.removeJob(launchId);
@@ -144,6 +168,19 @@ class LauncherPoller {
       _onLaunchJson?.call(st, tracked.notify);
     }
 
+    if (st.isFailed) {
+      await _jobs.removeJob(launchId);
+      stopTracking(launchId);
+      _onRowState(
+        tracked.repo,
+        tracked.tag,
+        const RowState(kind: RowStateKind.failed),
+      );
+      _onFailure?.call(tracked.repo, st.failureMessage, tracked.notify);
+      _onStatus('Launch failed', tracked.notify);
+      return;
+    }
+
     final url = st.access.url;
     final accessStatus = st.access.status;
 
@@ -162,7 +199,7 @@ class LauncherPoller {
       return;
     }
 
-    if (st.status == 'Succeeded' || st.status == 'Failed') {
+    if (st.status == 'Succeeded') {
       _onStatus('Job ${st.status}; access cleaned up', tracked.notify);
       await _jobs.removeJob(launchId);
       _onRowState(

@@ -63,6 +63,51 @@ class StatusText extends StatelessWidget {
   }
 }
 
+/// Displays the latest launch failure until the next launch attempt.
+class LaunchErrorBanner extends StatelessWidget {
+  /// Creates a persistent failure banner.
+  const LaunchErrorBanner({required this.message, super.key});
+
+  /// The app identifier and failure diagnostic to display.
+  final String message;
+
+  @override
+  Widget build(final BuildContext context) {
+    final tokens = context.bison;
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: EdgeInsets.all(tokens.spacing.standardSpacing),
+        decoration: BoxDecoration(
+          border: Border.all(color: tokens.theme.borderError),
+          borderRadius: BorderRadius.circular(tokens.corners.cornerMedium),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.error_outline, color: tokens.theme.iconError),
+            SizedBox(width: tokens.spacing.standardSpacing),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Launch failed',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: tokens.theme.textError,
+                    ),
+                  ),
+                  SelectableText(message),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Displays the application title and subtitle header.
 class Header extends StatelessWidget {
   /// Creates a [Header] widget.
@@ -165,6 +210,7 @@ class AppsTable extends StatelessWidget {
       RowStateKind.running => 'Running',
       RowStateKind.ready => 'Ready',
       RowStateKind.ending => 'Ending...',
+      RowStateKind.failed => 'Failed',
       RowStateKind.statusUnavailable => 'Unavailable',
     };
   }

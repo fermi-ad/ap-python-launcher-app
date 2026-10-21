@@ -4,7 +4,13 @@ import 'package:ap_python_launcher_app/config.dart' show Config;
 import 'package:ap_python_launcher_app/launcher/controller.dart'
     show LauncherController;
 import 'package:ap_python_launcher_app/launcher/widgets.dart'
-    show AppsTable, Header, LaunchStatusPanel, Panel, StatusText;
+    show
+        AppsTable,
+        Header,
+        LaunchErrorBanner,
+        LaunchStatusPanel,
+        Panel,
+        StatusText;
 import 'package:flutter/material.dart';
 import 'package:flutter_controls_core/flutter_controls_core.dart'
     show BisonButton;
@@ -86,6 +92,10 @@ class _LauncherPageState extends State<LauncherPage> {
                             ),
                           ],
                         ),
+                        if (_controller.launchError case final error?) ...[
+                          const SizedBox(height: 12),
+                          LaunchErrorBanner(message: error),
+                        ],
                         const SizedBox(height: 12),
                         AppsTable(
                           apps: _controller.apps,
