@@ -163,7 +163,23 @@ class LauncherController {
 
       final launchId = resp.launchId;
       final resolvedTag = resp.tag ?? tag;
-      if (launchId.isEmpty) return;
+      if (launchId.isEmpty) {
+        _setRowState(
+          repo,
+          tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
+        return;
+      }
+      if (resolvedTag != tag) {
+        _setRowState(
+          repo,
+          tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
+      }
 
       _launchJsonTrackingId = launchId;
 
