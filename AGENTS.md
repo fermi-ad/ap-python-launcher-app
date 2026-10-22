@@ -5,4 +5,4 @@
 # Rules
 
   - When making code changes, do **not** add comments that only exist to explain context about why the change was made, mention details about an earlier version of the code, or implicitly compare the current state to the previous state.
-  - When VS Code is running in a devcontainer, run dart and flutter commands as normal. When it's not running in a devcontainer, run these commands with fvm instead, if it's present.
+  - When VS Code is running in a devcontainer, run dart and flutter commands as normal. When it's not running in a devcontainer, run these commands with fvm instead, if it's present. Checking once at the beginning of a conversation is fine.
