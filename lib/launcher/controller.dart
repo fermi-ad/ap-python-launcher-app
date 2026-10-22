@@ -136,7 +136,7 @@ class LauncherController {
       final currentTags = <String, String>{
         for (final a in loaded) a.repo: (a.tag ?? 'latest'),
       };
-      await _restoreJobs(currentTags, notify);
+      await restoreJobs(currentTags, notify);
 
       _setStatus('Loaded ${loaded.length} app(s)', notify);
     } on Exception catch (e) {
@@ -237,13 +237,6 @@ class LauncherController {
   ///
   /// Calls [notify] after each state change so the UI can rebuild.
   Future<void> restoreJobs(
-    final Map<String, String> currentTags,
-    final void Function() notify,
-  ) async {
-    await _restoreJobs(currentTags, notify);
-  }
-
-  Future<void> _restoreJobs(
     final Map<String, String> currentTags,
     final void Function() notify,
   ) async {
