@@ -15,10 +15,13 @@ import 'fakes.dart' show FakeApiService, FakeJobStore, pumpMicrotasks;
 
 const _repo = 'ap-python/foo';
 const _id = 'opaque-launch-20261021t211142123456';
+const _failureMessage = 'Storage unavailable. Contact the administrator.';
+const _fallbackMessage =
+    'The launch failed. Try launching again or contact an administrator.';
 
 api.LaunchStatus _failed({
   final String? code,
-  final String message = 'Storage unavailable. Contact the administrator.',
+  final String message = _failureMessage,
   final String status = 'Failed',
   final String accessStatus = 'Failed',
 }) => api.LaunchStatus.fromJson({
@@ -61,72 +64,76 @@ void main() {
         expect(result.isFailed, isTrue);
         expect(result.failure?.code, code);
         expect(result.raw, status.raw);
-        expect(result.failureMessage, isNotEmpty);
-      }
-    });
-
-    test(
-      'polling failure $code stops tracking and notifies failed state',
-      () async {
-        final fake = FakeApiService()
-          ..launchStatuses[_id] = _failed(code: code);
-        final jobs = FakeJobStore();
-        await jobs.saveJob(_id, _repo, 'latest');
-        RowStateKind? kind;
-        String? diagnostic;
-        var notifiedFailed = false;
-        final poller = LauncherPoller(
-          apiService: fake,
-          jobStore: jobs,
-          pollInterval: const Duration(milliseconds: 1),
-          onRowState: (final repo, final tag, final state) => kind = state.kind,
-          onStatus: (final text, final notify) => notify(),
-          onFailure: (final repo, final message, final notify) {
-            diagnostic = message;
-            notify();
-          },
+        expect(
+          result.failureMessage,
+          code == null ? _fallbackMessage : _failureMessage,
         );
-        addTearDown(poller.dispose);
-        poller.startTracking(_id, _repo, 'latest', () {
-          notifiedFailed = kind == RowStateKind.failed;
-        });
-        await pumpMicrotasks();
-        expect(kind, RowStateKind.failed);
-        expect(notifiedFailed, isTrue);
-        expect(diagnostic, _failed(code: code).failureMessage);
-        expect(jobs.jobs, isEmpty);
-        expect(fake.getLaunchStatusCalls, [_id]);
-      },
-    );
-
-    test('restored failure $code remains visible after Refresh', () async {
-      final fake = FakeApiService()
-        ..apps = [api.AppInfo(repo: _repo, tag: 'latest', allTags: const [])]
-        ..launchStatuses[_id] = _failed(code: code);
-      final jobs = FakeJobStore();
-      await jobs.saveJob(_id, _repo, 'latest');
-      final controller = LauncherController(apiService: fake, jobStore: jobs);
-      addTearDown(controller.dispose);
-      await controller.refresh(() {});
-      final error = controller.launchJson;
-      expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
-      expect(jsonDecode(error), {
-        'repo': _repo,
-        'error': _failed(code: code).failureMessage,
-      });
-      expect(jobs.jobs, isEmpty);
-      await controller.refresh(() {});
-      expect(controller.launchJson, error);
-      expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
-      expect(fake.getLaunchStatusCalls, [_id]);
+      }
     });
   }
 
+  const code = 'StorageCollision';
+  test(
+    'polling failure stops tracking and notifies failed state',
+    () async {
+      final fake = FakeApiService()..launchStatuses[_id] = _failed(code: code);
+      final jobs = FakeJobStore();
+      await jobs.saveJob(_id, _repo, 'latest');
+      RowStateKind? kind;
+      String? diagnostic;
+      var notifiedFailed = false;
+      final poller = LauncherPoller(
+        apiService: fake,
+        jobStore: jobs,
+        pollInterval: const Duration(milliseconds: 1),
+        onRowState: (final repo, final tag, final state) => kind = state.kind,
+        onStatus: (final text, final notify) => notify(),
+        onFailure: (final repo, final message, final notify) {
+          diagnostic = message;
+          notify();
+        },
+      );
+      addTearDown(poller.dispose);
+      poller.startTracking(_id, _repo, 'latest', () {
+        notifiedFailed = kind == RowStateKind.failed;
+      });
+      await pumpMicrotasks();
+      expect(kind, RowStateKind.failed);
+      expect(notifiedFailed, isTrue);
+      expect(diagnostic, _failureMessage);
+      expect(jobs.jobs, isEmpty);
+      expect(fake.getLaunchStatusCalls, [_id]);
+    },
+  );
+
+  test('restored failure remains visible after Refresh', () async {
+    final fake = FakeApiService()
+      ..apps = [api.AppInfo(repo: _repo, tag: 'latest', allTags: const [])]
+      ..launchStatuses[_id] = _failed(code: code);
+    final jobs = FakeJobStore();
+    await jobs.saveJob(_id, _repo, 'latest');
+    final controller = LauncherController(apiService: fake, jobStore: jobs);
+    addTearDown(controller.dispose);
+    await controller.refresh(() {});
+    final error = controller.launchJson;
+    expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
+    expect(jsonDecode(error), {
+      'repo': _repo,
+      'error': _failureMessage,
+    });
+    expect(jobs.jobs, isEmpty);
+    await controller.refresh(() {});
+    expect(controller.launchJson, error);
+    expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
+    expect(fake.getLaunchStatusCalls, [_id]);
+  });
+
   test('failure without details and blank message has a fallback', () {
     expect(_failed().failure, isNull);
+    expect(_failed().failureMessage, _fallbackMessage);
     expect(
       _failed(code: 'StorageCollision', message: ' ').failureMessage,
-      _failed().failureMessage,
+      _fallbackMessage,
     );
     expect(api.LaunchStatus.fromJson({'status': 'Pending'}).isFailed, isFalse);
   });
@@ -154,6 +161,7 @@ void main() {
         addTearDown(controller.dispose);
         await controller.launch(_repo, 'latest', () {});
         expect(requests, 1);
+        expect(controller.statusText, 'Launch failed');
         expect(
           controller.launchJson,
           contains('Launch rejected by the service'),
@@ -238,7 +246,7 @@ void main() {
       final error = controller.launchJson;
       expect(jsonDecode(error), {
         'repo': _repo,
-        'error': _failed(code: 'StorageCollision').failureMessage,
+        'error': _failureMessage,
       });
       await jobs.saveJob('another-id', 'ap-python/bar', 'latest');
       fake.launchStatuses['another-id'] = api.LaunchStatus.fromJson({

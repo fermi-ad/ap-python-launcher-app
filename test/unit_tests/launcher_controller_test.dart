@@ -185,21 +185,6 @@ void main() {
       c.dispose();
     });
 
-    test('sets error status on failure', () async {
-      final failingApi = _FailingLaunchApiService();
-      final jobs = FakeJobStore();
-      final notify = NotifyCounter();
-      final c = LauncherController(
-        apiService: failingApi,
-        jobStore: jobs,
-      );
-
-      await c.launch('ap-python/foo', 'latest', notify.call);
-
-      expect(c.statusText, 'Launch failed');
-      expect(c.launchJson, contains('error'));
-    });
-
     test('updates launchJson during polling until ready', () async {
       final fakeApi = FakeApiService()
         ..launchResponse = api.LaunchResponse(
@@ -505,33 +490,6 @@ class _FailingAppsApiService implements api.ApiService {
 
   @override
   Future<api.LaunchResponse> postLaunch(final String repo) async {
-    throw UnimplementedError();
-  }
-}
-
-class _FailingLaunchApiService implements api.ApiService {
-  @override
-  Future<List<api.AppInfo>> getApps() async => const [];
-
-  @override
-  Future<api.LaunchResponse> postLaunch(final String repo) async {
-    throw Exception('boom');
-  }
-
-  @override
-  Future<api.LaunchStatus> getLaunchStatus(final String launchId) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<api.LaunchStatus>> getLaunchStatuses(
-    final List<String> launchIds,
-  ) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     throw UnimplementedError();
   }
 }

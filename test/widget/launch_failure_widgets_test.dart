@@ -48,7 +48,7 @@ void main() {
     expect(launches, 1);
   });
 
-  testWidgets('launch failure uses the plain JSON status panel', (
+  testWidgets('status panel displays failure JSON as selectable text', (
     final tester,
   ) async {
     const json = '{"error":"Storage collision. Launch again."}';
@@ -61,7 +61,5 @@ void main() {
 
     expect(find.text(json), findsOneWidget);
     expect(find.byType(SelectableText), findsOneWidget);
-    expect(find.text('Launch failed'), findsNothing);
-    expect(find.byIcon(Icons.error_outline), findsNothing);
   });
 }

@@ -4,7 +4,7 @@ import 'package:ap_python_launcher_app/launcher/widgets.dart'
     show AppsTable, StatusText;
 import 'package:flutter/material.dart';
 import 'package:flutter_controls_core/flutter_controls_core.dart'
-    show BisonThemeData;
+    show BisonButton, BisonThemeData;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -119,6 +119,7 @@ void main() {
     });
 
     testWidgets('shows End disabled when ending', (final tester) async {
+      var ends = 0;
       models.RowState stateFor(final String repo, final String tag) {
         return const models.RowState(
           kind: models.RowStateKind.ending,
@@ -143,15 +144,20 @@ void main() {
                 ],
                 rowStateFor: stateFor,
                 onLaunch: (final repo, final tag) async {},
-                onEnd: (final launchId, final repo, final tag) async {},
+                onEnd: (final launchId, final repo, final tag) async {
+                  ends++;
+                },
               ),
             ),
           ),
         ),
       );
 
-      final endButton = tester.widget<Widget>(find.text('End'));
-      expect(endButton, isNotNull);
+      final endButton = tester.widget<BisonButton>(find.byType(BisonButton));
+      expect(endButton.onPressed, isNull);
+      await tester.tap(find.text('End'), warnIfMissed: false);
+      await tester.pump();
+      expect(ends, 0);
     });
 
     testWidgets('renders narrow layout as cards', (final tester) async {
