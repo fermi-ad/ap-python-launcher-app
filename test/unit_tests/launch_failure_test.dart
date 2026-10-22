@@ -11,7 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' show Response;
 import 'package:http/testing.dart' show MockClient;
 
-import 'fakes.dart' show FakeApiService, FakeJobStore, pumpMicrotasks;
+import 'fakes.dart'
+    show FakeApiService, FakeJobStore, pumpMicrotasks, pumpUntil;
 
 const _repo = 'ap-python/foo';
 const _id = 'opaque-launch-20261021t211142123456';
@@ -207,7 +208,7 @@ void main() {
         'access': {'status': 'Pending'},
       });
       await launch;
-      await pumpMicrotasks();
+      await pumpUntil(() => controller.launchJson.contains('Running'));
       expect(controller.launchJson, isNot(contains('failure')));
     },
   );
@@ -234,14 +235,18 @@ void main() {
       );
       addTearDown(controller.dispose);
       await controller.launch(_repo, 'latest', () {});
-      await pumpMicrotasks();
-      expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.ready);
+      await pumpUntil(
+        () =>
+            controller.rowStateFor(_repo, 'latest').kind == RowStateKind.ready,
+      );
       fake.launchStatuses[_id] = _failed(
         code: 'StorageCollision',
         status: 'Running',
       );
-      await pumpMicrotasks();
-      expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
+      await pumpUntil(
+        () =>
+            controller.rowStateFor(_repo, 'latest').kind == RowStateKind.failed,
+      );
       expect(controller.rowStateFor(_repo, 'latest').connectUrl, isNull);
       final error = controller.launchJson;
       expect(jsonDecode(error), {
@@ -255,7 +260,11 @@ void main() {
         'access': {'status': 'Ready', 'url': 'http://other/'},
       });
       await controller.restoreJobs({'ap-python/bar': 'latest'}, () {});
-      await pumpMicrotasks();
+      await pumpUntil(
+        () =>
+            controller.rowStateFor('ap-python/bar', 'latest').kind ==
+            RowStateKind.ready,
+      );
       expect(controller.launchJson, error);
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
     },
