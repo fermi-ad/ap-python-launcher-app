@@ -17,10 +17,10 @@ const _repo = 'ap-python/foo';
 const _id = 'opaque-launch-20261021t211142123456';
 
 api.LaunchStatus _failed({
-  String? code,
-  String message = 'Storage unavailable. Contact the administrator.',
-  String status = 'Failed',
-  String accessStatus = 'Failed',
+  final String? code,
+  final String message = 'Storage unavailable. Contact the administrator.',
+  final String status = 'Failed',
+  final String accessStatus = 'Failed',
 }) => api.LaunchStatus.fromJson({
   'launchId': _id,
   'status': status,
@@ -37,7 +37,7 @@ void main() {
   ]) {
     test('single and batch HTTP responses accept failure $code', () async {
       final status = _failed(code: code);
-      final client = MockClient((request) async {
+      final client = MockClient((final request) async {
         return Response(
           jsonEncode(
             request.url.path == '/launch/status'
@@ -79,9 +79,9 @@ void main() {
           apiService: fake,
           jobStore: jobs,
           pollInterval: const Duration(milliseconds: 1),
-          onRowState: (repo, tag, state) => kind = state.kind,
-          onStatus: (text, notify) => notify(),
-          onFailure: (repo, message, notify) {
+          onRowState: (final repo, final tag, final state) => kind = state.kind,
+          onStatus: (final text, final notify) => notify(),
+          onFailure: (final repo, final message, final notify) {
             diagnostic = message;
             notify();
           },
@@ -136,7 +136,7 @@ void main() {
       'HTTP $status performs one request and preserves server detail',
       () async {
         var requests = 0;
-        final client = MockClient((request) async {
+        final client = MockClient((final request) async {
           requests++;
           return Response(
             '{"detail":"Launch rejected by the service"}',
@@ -258,7 +258,7 @@ class _DelayedLaunchApi extends FakeApiService {
   Completer<api.LaunchResponse>? response;
 
   @override
-  Future<api.LaunchResponse> postLaunch(String repo) {
+  Future<api.LaunchResponse> postLaunch(final String repo) {
     final pending = response;
     return pending == null ? super.postLaunch(repo) : pending.future;
   }

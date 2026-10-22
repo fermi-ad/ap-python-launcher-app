@@ -9,13 +9,15 @@ import 'package:ap_python_launcher_app/launcher/models.dart'
 class LauncherPoller {
   /// Creates a [LauncherPoller].
   LauncherPoller({
-    required api.ApiService apiService,
-    required jobs.JobStore jobStore,
-    required Duration pollInterval,
-    required void Function(String repo, String tag, RowState state) onRowState,
-    required void Function(String text, void Function() notify) onStatus,
-    void Function(api.LaunchStatus st, void Function() notify)? onLaunchJson,
-    void Function(String repo, String message, void Function() notify)?
+    required final api.ApiService apiService,
+    required final jobs.JobStore jobStore,
+    required final Duration pollInterval,
+    required final void Function(String repo, String tag, RowState state)
+    onRowState,
+    required final void Function(String text, void Function() notify) onStatus,
+    final void Function(api.LaunchStatus st, void Function() notify)?
+    onLaunchJson,
+    final void Function(String repo, String message, void Function() notify)?
     onFailure,
   }) : this._(
          apiService,
@@ -62,11 +64,11 @@ class LauncherPoller {
   /// Starts tracking the given [launchId] for the app identified by [repo]
   /// and [tag].
   void startTracking(
-    String launchId,
-    String repo,
-    String tag,
-    void Function() notify, {
-    bool updateLaunchJson = false,
+    final String launchId,
+    final String repo,
+    final String tag,
+    final void Function() notify, {
+    final bool updateLaunchJson = false,
   }) {
     _trackedJobs[launchId] = _TrackedJob(
       repo: repo,
@@ -78,7 +80,7 @@ class LauncherPoller {
   }
 
   /// Stops tracking the given [launchId].
-  void stopTracking(String launchId) {
+  void stopTracking(final String launchId) {
     _trackedJobs.remove(launchId);
     if (_trackedJobs.isEmpty) {
       _pollTimer?.cancel();
@@ -101,7 +103,9 @@ class LauncherPoller {
     _pollInFlight = true;
 
     final entries = _trackedJobs.entries.toList(growable: false);
-    final launchIds = entries.map((entry) => entry.key).toList(growable: false);
+    final launchIds = entries
+        .map((final entry) => entry.key)
+        .toList(growable: false);
 
     try {
       final statuses = await _api.getLaunchStatuses(launchIds);
@@ -145,9 +149,9 @@ class LauncherPoller {
   }
 
   Future<void> _applyPolledStatus(
-    String launchId,
-    _TrackedJob tracked,
-    api.LaunchStatus st,
+    final String launchId,
+    final _TrackedJob tracked,
+    final api.LaunchStatus st,
   ) async {
     if (st.status == 'NotFound') {
       await _jobs.removeJob(launchId);

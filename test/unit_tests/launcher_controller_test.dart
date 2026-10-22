@@ -487,24 +487,24 @@ class _FailingAppsApiService implements api.ApiService {
   }
 
   @override
-  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<api.LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<api.LaunchStatus> getLaunchStatus(final String launchId) async {
     throw UnimplementedError();
   }
 
   @override
   Future<List<api.LaunchStatus>> getLaunchStatuses(
-    List<String> launchIds,
+    final List<String> launchIds,
   ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<api.LaunchResponse> postLaunch(String repo) async {
+  Future<api.LaunchResponse> postLaunch(final String repo) async {
     throw UnimplementedError();
   }
 }
@@ -514,24 +514,24 @@ class _FailingLaunchApiService implements api.ApiService {
   Future<List<api.AppInfo>> getApps() async => const [];
 
   @override
-  Future<api.LaunchResponse> postLaunch(String repo) async {
+  Future<api.LaunchResponse> postLaunch(final String repo) async {
     throw Exception('boom');
   }
 
   @override
-  Future<api.LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<api.LaunchStatus> getLaunchStatus(final String launchId) async {
     throw UnimplementedError();
   }
 
   @override
   Future<List<api.LaunchStatus>> getLaunchStatuses(
-    List<String> launchIds,
+    final List<String> launchIds,
   ) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     throw UnimplementedError();
   }
 }
@@ -545,22 +545,23 @@ class _SuspendingStatusApiService implements api.ApiService {
   Future<List<api.AppInfo>> getApps() async => const [];
 
   @override
-  Future<api.LaunchStatus> getLaunchStatus(String launchId) => _statusFuture;
+  Future<api.LaunchStatus> getLaunchStatus(final String launchId) =>
+      _statusFuture;
 
   @override
   Future<List<api.LaunchStatus>> getLaunchStatuses(
-    List<String> launchIds,
+    final List<String> launchIds,
   ) async {
     return Future.wait(launchIds.map(getLaunchStatus));
   }
 
   @override
-  Future<api.LaunchResponse> postLaunch(String repo) async {
+  Future<api.LaunchResponse> postLaunch(final String repo) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     throw UnimplementedError();
   }
 }

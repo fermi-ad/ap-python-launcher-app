@@ -38,7 +38,7 @@ class FakeApiService implements ApiService {
   Future<List<AppInfo>> getApps() async => apps;
 
   @override
-  Future<LaunchResponse> postLaunch(String repo) async {
+  Future<LaunchResponse> postLaunch(final String repo) async {
     postLaunchCalls.add(repo);
     final error = postLaunchError;
     if (error != null) throw error;
@@ -46,7 +46,7 @@ class FakeApiService implements ApiService {
   }
 
   @override
-  Future<LaunchStatus> getLaunchStatus(String launchId) async {
+  Future<LaunchStatus> getLaunchStatus(final String launchId) async {
     getLaunchStatusCalls.add(launchId);
 
     final err = launchStatusErrors[launchId];
@@ -70,7 +70,7 @@ class FakeApiService implements ApiService {
 
   @override
   Future<List<LaunchStatus>> getLaunchStatuses(
-    List<String> launchIds,
+    final List<String> launchIds,
   ) async {
     final statuses = <LaunchStatus>[];
     for (final launchId in launchIds) {
@@ -95,7 +95,7 @@ class FakeApiService implements ApiService {
   }
 
   @override
-  Future<Map<String, dynamic>> deleteLaunch(String launchId) async {
+  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     deleteLaunchCalls.add(launchId);
     return const <String, dynamic>{'ok': true};
   }
@@ -111,18 +111,18 @@ class FakeJobStore implements JobStore {
 
   @override
   Future<void> saveJob(
-    String launchId,
-    String repo,
-    String tag,
+    final String launchId,
+    final String repo,
+    final String tag,
   ) async {
     _jobs
-      ..removeWhere((j) => j.repo == repo && j.tag == tag)
+      ..removeWhere((final j) => j.repo == repo && j.tag == tag)
       ..add(SavedJob(launchId: launchId, repo: repo, tag: tag));
   }
 
   @override
-  Future<void> removeJob(String launchId) async {
-    _jobs.removeWhere((j) => j.launchId == launchId);
+  Future<void> removeJob(final String launchId) async {
+    _jobs.removeWhere((final j) => j.launchId == launchId);
   }
 }
 
@@ -134,7 +134,7 @@ class NotifyCounter {
   }
 }
 
-Future<void> pumpMicrotasks([int times = 20]) async {
+Future<void> pumpMicrotasks([final int times = 20]) async {
   for (var i = 0; i < times; i++) {
     await Future<void>.delayed(Duration.zero);
   }

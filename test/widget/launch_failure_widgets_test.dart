@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('failed row shows Failed and allows launching again', (
-    tester,
+    final tester,
   ) async {
     var launches = 0;
     await tester.pumpWidget(
@@ -27,13 +27,13 @@ void main() {
                   allTags: const [],
                 ),
               ],
-              rowStateFor: (repo, tag) => const RowState(
+              rowStateFor: (final repo, final tag) => const RowState(
                 kind: RowStateKind.failed,
               ),
-              onLaunch: (repo, tag) async {
+              onLaunch: (final repo, final tag) async {
                 launches++;
               },
-              onEnd: (id, repo, tag) async {},
+              onEnd: (final id, final repo, final tag) async {},
             ),
           ),
         ),
@@ -49,7 +49,7 @@ void main() {
   });
 
   testWidgets('launch failure uses the plain JSON status panel', (
-    tester,
+    final tester,
   ) async {
     const json = '{"error":"Storage collision. Launch again."}';
     await tester.pumpWidget(
