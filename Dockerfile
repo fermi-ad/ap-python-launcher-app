@@ -1,5 +1,5 @@
 # Use NGINX as the base image
-FROM nginx:1.30
+FROM nginx:1.31.7
 
 # Copy built web files with non-root ownership.
 COPY --chown=nginx:nginx ./build/web /usr/share/nginx/html
