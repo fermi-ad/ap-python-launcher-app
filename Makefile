@@ -11,8 +11,11 @@ help:
 test: ## Run Flutter (frontend/) tests
 	$(FVM)flutter test --concurrency=1
 
-lint: ## Run flutter analyze
-	$(FVM)flutter analyze; $(FVM)dart analyze
+lint: ## Run flutter analyze and dart analyze, which have slightly different coverage
+	@status=0; \
+	$(FVM)flutter analyze || status=1; \
+	$(FVM)dart analyze || status=1; \
+	exit $$status
 
 build: ## Build Flutter web frontend
 	$(FVM)flutter pub get
