@@ -19,7 +19,7 @@ lint: ## Run flutter analyze and dart analyze, which have slightly different cov
 
 build: ## Build Flutter web frontend
 	$(FVM)flutter pub get
-	$(FVM)flutter build web --wasm --no-web-resources-cdn --pwa-strategy="offline-first"
+	$(FVM)flutter build web --wasm --no-web-resources-cdn
 
 docker-build: ## Build the dev Docker image
 	docker build -t $(DEV_IMAGE) .
