@@ -176,7 +176,7 @@ class LaunchStatus {
     return message != null && message.trim().isNotEmpty
         ? message
         : 'The launch failed. Try launching again or contact '
-              'the administrator.';
+              'an administrator.';
   }
 
   /// The raw JSON map as returned by the server.
