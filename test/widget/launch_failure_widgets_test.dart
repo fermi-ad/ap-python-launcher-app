@@ -2,7 +2,7 @@ import 'package:ap_python_launcher_app/api_service.dart' show AppInfo;
 import 'package:ap_python_launcher_app/launcher/models.dart'
     show RowState, RowStateKind;
 import 'package:ap_python_launcher_app/launcher/widgets.dart'
-    show AppsTable, LaunchErrorBanner;
+    show AppsTable, LaunchStatusPanel;
 import 'package:flutter/material.dart';
 import 'package:flutter_controls_core/flutter_controls_core.dart'
     show BisonThemeData;
@@ -48,49 +48,20 @@ void main() {
     expect(launches, 1);
   });
 
-  testWidgets('one persistent banner displays the latest error', (
+  testWidgets('launch failure uses the plain JSON status panel', (
     tester,
   ) async {
-    Widget build(String? error) => MaterialApp(
-      theme: BisonThemeData.dark(),
-      home: Scaffold(
-        body: Column(
-          children: [if (error != null) LaunchErrorBanner(message: error)],
-        ),
+    const json = '{"error":"Storage collision. Launch again."}';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: BisonThemeData.dark(),
+        home: const Scaffold(body: LaunchStatusPanel(text: json)),
       ),
     );
-    await tester.pumpWidget(
-      build('ap-python/foo: Storage collision. Launch again.'),
-    );
-    await tester.pump(const Duration(minutes: 1));
-    expect(find.byType(LaunchErrorBanner), findsOneWidget);
-    expect(
-      find.text('ap-python/foo: Storage collision. Launch again.'),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.close), findsNothing);
-    final semantics = tester.widget<Semantics>(
-      find
-          .descendant(
-            of: find.byType(LaunchErrorBanner),
-            matching: find.byType(Semantics),
-          )
-          .first,
-    );
-    expect(semantics.properties.liveRegion, isTrue);
-    await tester.pumpWidget(
-      build('ap-python/bar: Storage permissions unavailable.'),
-    );
-    expect(find.byType(LaunchErrorBanner), findsOneWidget);
-    expect(
-      find.text('ap-python/foo: Storage collision. Launch again.'),
-      findsNothing,
-    );
-    expect(
-      find.text('ap-python/bar: Storage permissions unavailable.'),
-      findsOneWidget,
-    );
-    await tester.pumpWidget(build(null));
-    expect(find.byType(LaunchErrorBanner), findsNothing);
+
+    expect(find.text(json), findsOneWidget);
+    expect(find.byType(SelectableText), findsOneWidget);
+    expect(find.text('Launch failed'), findsNothing);
+    expect(find.byIcon(Icons.error_outline), findsNothing);
   });
 }

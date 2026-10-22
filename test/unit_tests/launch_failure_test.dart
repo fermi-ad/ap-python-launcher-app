@@ -1,5 +1,5 @@
 import 'dart:async' show Completer;
-import 'dart:convert' show jsonEncode;
+import 'dart:convert' show jsonDecode, jsonEncode;
 
 import 'package:ap_python_launcher_app/api_service.dart' as api;
 import 'package:ap_python_launcher_app/launcher/controller.dart'
@@ -108,12 +108,15 @@ void main() {
       final controller = LauncherController(apiService: fake, jobStore: jobs);
       addTearDown(controller.dispose);
       await controller.refresh(() {});
-      final error = controller.launchError;
+      final error = controller.launchJson;
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
-      expect(error, '$_repo: ${_failed(code: code).failureMessage}');
+      expect(jsonDecode(error), {
+        'repo': _repo,
+        'error': _failed(code: code).failureMessage,
+      });
       expect(jobs.jobs, isEmpty);
       await controller.refresh(() {});
-      expect(controller.launchError, error);
+      expect(controller.launchJson, error);
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
       expect(fake.getLaunchStatusCalls, [_id]);
     });
@@ -152,8 +155,8 @@ void main() {
         await controller.launch(_repo, 'latest', () {});
         expect(requests, 1);
         expect(
-          controller.launchError,
-          '$_repo: Launch rejected by the service',
+          controller.launchJson,
+          contains('Launch rejected by the service'),
         );
         expect(
           controller.rowStateFor(_repo, 'latest').kind,
@@ -164,7 +167,7 @@ void main() {
   }
 
   test(
-    'latest error replaces older errors and clears at launch start',
+    'latest JSON error is replaced by the next launch response',
     () async {
       final fake = _DelayedLaunchApi()
         ..postLaunchError = Exception('first failure');
@@ -174,19 +177,18 @@ void main() {
       );
       addTearDown(controller.dispose);
       await controller.launch(_repo, 'latest', () {});
-      expect(controller.launchError, contains('first failure'));
+      expect(controller.launchJson, contains('first failure'));
       fake.postLaunchError = Exception('second failure');
       await controller.launch('ap-python/bar', 'latest', () {});
-      expect(
-        controller.launchError,
-        'ap-python/bar: Exception: second failure',
-      );
+      expect(jsonDecode(controller.launchJson), {
+        'error': 'Exception: second failure',
+      });
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
       fake
         ..postLaunchError = null
         ..response = Completer<api.LaunchResponse>();
       final launch = controller.launch('ap-python/bar', 'latest', () {});
-      expect(controller.launchError, isNull);
+      expect(controller.launchJson, contains('second failure'));
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
       fake.response!.complete(
         api.LaunchResponse(launchId: _id, tag: 'latest', raw: const {}),
@@ -198,7 +200,7 @@ void main() {
       });
       await launch;
       await pumpMicrotasks();
-      expect(controller.launchError, isNull);
+      expect(controller.launchJson, isNot(contains('failure')));
     },
   );
 
@@ -233,8 +235,11 @@ void main() {
       await pumpMicrotasks();
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
       expect(controller.rowStateFor(_repo, 'latest').connectUrl, isNull);
-      final error = controller.launchError;
-      expect(error, isNotNull);
+      final error = controller.launchJson;
+      expect(jsonDecode(error), {
+        'repo': _repo,
+        'error': _failed(code: 'StorageCollision').failureMessage,
+      });
       await jobs.saveJob('another-id', 'ap-python/bar', 'latest');
       fake.launchStatuses['another-id'] = api.LaunchStatus.fromJson({
         'launchId': 'another-id',
@@ -243,7 +248,7 @@ void main() {
       });
       await controller.restoreJobs({'ap-python/bar': 'latest'}, () {});
       await pumpMicrotasks();
-      expect(controller.launchError, error);
+      expect(controller.launchJson, error);
       expect(controller.rowStateFor(_repo, 'latest').kind, RowStateKind.failed);
     },
   );

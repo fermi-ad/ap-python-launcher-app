@@ -53,9 +53,6 @@ class LauncherController {
   /// The pretty-printed JSON of the most recent launch status response.
   String launchJson = 'No new launches';
 
-  /// The latest launch failure, retained until a new launch attempt begins.
-  String? launchError;
-
   final Map<String, RowState> _rowStates = {};
   String? _launchJsonTrackingId;
 
@@ -66,16 +63,15 @@ class LauncherController {
     onRowState: (repo, tag, state) => _rowStates[_key(repo, tag)] = state,
     onStatus: _setStatus,
     onLaunchJson: _setLaunchJsonFromStatus,
-    onFailure: _setLaunchError,
+    onFailure: _setLaunchFailure,
   );
 
-  void _setLaunchError(
+  void _setLaunchFailure(
     String repo,
     String message,
     void Function() notify,
   ) {
-    launchError = '$repo: $message';
-    notify();
+    _setLaunchJson({'repo': repo, 'error': message}, notify);
   }
 
   String _key(String repo, String tag) => '$repo:$tag';
@@ -156,7 +152,6 @@ class LauncherController {
     String tag,
     void Function() notify,
   ) async {
-    launchError = null;
     _launchJsonTrackingId = null;
     _setRowState(repo, tag, const RowState(kind: RowStateKind.pending), notify);
     _setStatus('Launching $repo...', notify);
@@ -185,11 +180,6 @@ class LauncherController {
         repo,
         tag,
         const RowState(kind: RowStateKind.failed),
-        notify,
-      );
-      _setLaunchError(
-        repo,
-        e is api.ApiException ? e.message : e.toString(),
         notify,
       );
       _setStatus('Launch failed', notify);
@@ -298,7 +288,7 @@ class LauncherController {
           const RowState(kind: RowStateKind.failed),
           notify,
         );
-        _setLaunchError(job.repo, st.failureMessage, notify);
+        _setLaunchFailure(job.repo, st.failureMessage, notify);
       } else if (url != null && accessStatus == 'Ready') {
         _setRowState(
           job.repo,
