@@ -156,7 +156,7 @@ class LaunchStatus {
   /// Whether the job or its access has failed.
   bool get isFailed => status == 'Failed' || access.status == 'Failed';
 
-  /// Failure text suitable for display when diagnostics are absent.
+  /// The service's failure message, or generic guidance when none was provided.
   String get failureMessage {
     final message = failure?.message;
     return message != null && message.trim().isNotEmpty
