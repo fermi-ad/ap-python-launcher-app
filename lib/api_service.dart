@@ -24,20 +24,6 @@ class ApiException implements Exception {
   /// The raw response body returned by the server.
   final String body;
 
-  /// The server's Problem Details message, or a readable fallback.
-  String get message {
-    try {
-      final decoded = jsonDecode(body);
-      if (decoded is Map<String, dynamic>) {
-        final detail = decoded['detail'];
-        if (detail is String && detail.trim().isNotEmpty) return detail;
-      }
-    } on Object {
-      return body.isNotEmpty ? body : '$statusCode $statusText';
-    }
-    return body.isNotEmpty ? body : '$statusCode $statusText';
-  }
-
   @override
   String toString() {
     try {
