@@ -1,6 +1,6 @@
 # Codebase context
 
-  - The Flutter frontend uses the private Flutter design system called Bison: https://github.com/fermi-ad/flutter-bison-design-system. When possible, prefer using widgets and theme tokens from Bison rather than base Flutter widgets or tokens. If you can't access the GitHub repo, look in the local pub cache to discover what Bison provides. This repo gets Bison from its flutter-controls-core dependency.
+  - The Flutter frontend uses the Flutter design system called Bison: https://github.com/fermi-ad/flutter-bison-design-system. When possible, prefer using widgets and theme tokens from Bison rather than base Flutter widgets or tokens. If you can't access the GitHub repo, look in the local pub cache to discover what Bison provides. This repo gets Bison from its flutter-controls-core dependency.
 
 # Rules
 
