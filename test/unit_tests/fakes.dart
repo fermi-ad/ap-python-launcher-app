@@ -1,4 +1,4 @@
-import 'dart:async' show Future;
+import 'dart:async' show Future, TimeoutException;
 import 'dart:collection' show Queue;
 
 import 'package:ap_python_launcher_app/api_service.dart'
@@ -28,6 +28,8 @@ class FakeApiService implements ApiService {
   /// map is consulted.
   final Map<String, Queue<LaunchStatus>> launchStatusQueue = {};
 
+  Exception? postLaunchError;
+
   final List<String> postLaunchCalls = [];
   final List<String> getLaunchStatusCalls = [];
   final List<String> deleteLaunchCalls = [];
@@ -38,6 +40,8 @@ class FakeApiService implements ApiService {
   @override
   Future<LaunchResponse> postLaunch(final String repo) async {
     postLaunchCalls.add(repo);
+    final error = postLaunchError;
+    if (error != null) throw error;
     return launchResponse;
   }
 
@@ -133,5 +137,21 @@ class NotifyCounter {
 Future<void> pumpMicrotasks([final int times = 20]) async {
   for (var i = 0; i < times; i++) {
     await Future<void>.delayed(Duration.zero);
+  }
+}
+
+/// Waits until [condition] is true, yielding to the event loop between checks.
+///
+/// Throws a [TimeoutException] if [condition] is still false after [timeout].
+Future<void> pumpUntil(
+  final bool Function() condition, {
+  final Duration timeout = const Duration(seconds: 5),
+}) async {
+  final stopwatch = Stopwatch()..start();
+  while (!condition()) {
+    if (stopwatch.elapsed > timeout) {
+      throw TimeoutException('Condition not met within $timeout', timeout);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 1));
   }
 }
