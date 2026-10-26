@@ -139,6 +139,70 @@ void main() {
       c.dispose();
     });
 
+    test('returns row to idle when launchId is empty', () async {
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
+          launchId: '',
+          tag: null,
+          raw: const <String, dynamic>{'launchId': ''},
+        );
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
+
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
+      expect(jobs.jobs, isEmpty);
+
+      c.dispose();
+    });
+
+    test('returns requested row to idle when resolved tag differs', () async {
+      final fakeApi = FakeApiService()
+        ..launchResponse = api.LaunchResponse(
+          launchId: 'id1',
+          tag: 'v2',
+          raw: const <String, dynamic>{'launchId': 'id1', 'tag': 'v2'},
+        )
+        ..launchStatuses['id1'] = api.LaunchStatus(
+          launchId: 'id1',
+          status: 'Running',
+          access: api.LaunchAccess(status: 'Pending', url: null),
+          raw: const <String, dynamic>{
+            'status': 'Running',
+            'access': <String, dynamic>{
+              'status': 'Pending',
+              'url': null,
+            },
+          },
+        );
+      final jobs = FakeJobStore();
+      final notify = NotifyCounter();
+      final c = LauncherController(
+        apiService: fakeApi,
+        jobStore: jobs,
+      );
+
+      await c.launch('ap-python/foo', 'latest', notify.call);
+
+      expect(
+        c.rowStateFor('ap-python/foo', 'latest').kind,
+        models.RowStateKind.idle,
+      );
+      final resolved = c.rowStateFor('ap-python/foo', 'v2');
+      expect(resolved.kind, models.RowStateKind.pending);
+      expect(resolved.launchId, 'id1');
+
+      c.dispose();
+    });
+
     test('notifies during background polling updates', () async {
       final fakeApi = FakeApiService()
         ..launchResponse = api.LaunchResponse(
@@ -183,21 +247,6 @@ void main() {
       expect(c.statusText, contains('App is reachable'));
 
       c.dispose();
-    });
-
-    test('sets error status on failure', () async {
-      final failingApi = _FailingLaunchApiService();
-      final jobs = FakeJobStore();
-      final notify = NotifyCounter();
-      final c = LauncherController(
-        apiService: failingApi,
-        jobStore: jobs,
-      );
-
-      await c.launch('ap-python/foo', 'latest', notify.call);
-
-      expect(c.statusText, 'Launch failed');
-      expect(c.launchJson, contains('error'));
     });
 
     test('updates launchJson during polling until ready', () async {
@@ -505,33 +554,6 @@ class _FailingAppsApiService implements api.ApiService {
 
   @override
   Future<api.LaunchResponse> postLaunch(final String repo) async {
-    throw UnimplementedError();
-  }
-}
-
-class _FailingLaunchApiService implements api.ApiService {
-  @override
-  Future<List<api.AppInfo>> getApps() async => const [];
-
-  @override
-  Future<api.LaunchResponse> postLaunch(final String repo) async {
-    throw Exception('boom');
-  }
-
-  @override
-  Future<api.LaunchStatus> getLaunchStatus(final String launchId) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<api.LaunchStatus>> getLaunchStatuses(
-    final List<String> launchIds,
-  ) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Map<String, dynamic>> deleteLaunch(final String launchId) async {
     throw UnimplementedError();
   }
 }

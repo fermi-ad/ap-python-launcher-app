@@ -97,6 +97,26 @@ class LaunchAccess {
   final String? url;
 }
 
+/// Sanitized failure diagnostics returned by the launch service.
+class LaunchFailure {
+  /// Creates failure diagnostics.
+  const LaunchFailure({required this.code, required this.message});
+
+  /// Deserializes failure diagnostics without restricting known codes.
+  factory LaunchFailure.fromJson(final Map<String, dynamic> json) {
+    return LaunchFailure(
+      code: (json['code'] as String?) ?? '',
+      message: (json['message'] as String?) ?? '',
+    );
+  }
+
+  /// The service's failure code.
+  final String code;
+
+  /// The service's human-readable failure message.
+  final String message;
+}
+
 /// The current status of a launch job returned by the API.
 class LaunchStatus {
   /// Creates a [LaunchStatus] with the given fields.
@@ -105,6 +125,7 @@ class LaunchStatus {
     required this.status,
     required this.access,
     required this.raw,
+    this.failure,
   });
 
   /// Deserializes a [LaunchStatus] from a JSON map.
@@ -114,6 +135,9 @@ class LaunchStatus {
       status: (json['status'] as String?) ?? '',
       access: LaunchAccess.fromJson(json['access'] as Map<String, dynamic>?),
       raw: json,
+      failure: json['failure'] == null
+          ? null
+          : LaunchFailure.fromJson(json['failure'] as Map<String, dynamic>),
     );
   }
 
@@ -125,6 +149,21 @@ class LaunchStatus {
 
   /// Access details for this launch.
   final LaunchAccess access;
+
+  /// Optional failure diagnostics supplied by the service.
+  final LaunchFailure? failure;
+
+  /// Whether the job or its access has failed.
+  bool get isFailed => status == 'Failed' || access.status == 'Failed';
+
+  /// The service's failure message, or generic guidance when none was provided.
+  String get failureMessage {
+    final message = failure?.message;
+    return message != null && message.trim().isNotEmpty
+        ? message
+        : 'The launch failed. Try launching again or contact '
+              'an administrator.';
+  }
 
   /// The raw JSON map as returned by the server.
   final Map<String, dynamic> raw;

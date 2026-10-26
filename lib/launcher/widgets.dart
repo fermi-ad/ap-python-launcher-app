@@ -165,6 +165,7 @@ class AppsTable extends StatelessWidget {
       RowStateKind.running => 'Running',
       RowStateKind.ready => 'Ready',
       RowStateKind.ending => 'Ending...',
+      RowStateKind.failed => 'Failed',
       RowStateKind.statusUnavailable => 'Unavailable',
     };
   }

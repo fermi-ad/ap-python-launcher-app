@@ -64,7 +64,16 @@ class LauncherController {
         _rowStates[_key(repo, tag)] = state,
     onStatus: _setStatus,
     onLaunchJson: _setLaunchJsonFromStatus,
+    onFailure: _setLaunchFailure,
   );
+
+  void _setLaunchFailure(
+    final String repo,
+    final String message,
+    final void Function() notify,
+  ) {
+    _setLaunchJson({'repo': repo, 'error': message}, notify);
+  }
 
   String _key(final String repo, final String tag) => '$repo:$tag';
 
@@ -127,7 +136,7 @@ class LauncherController {
       final currentTags = <String, String>{
         for (final a in loaded) a.repo: (a.tag ?? 'latest'),
       };
-      await _restoreJobs(currentTags, notify);
+      await restoreJobs(currentTags, notify);
 
       _setStatus('Loaded ${loaded.length} app(s)', notify);
     } on Exception catch (e) {
@@ -144,6 +153,8 @@ class LauncherController {
     final String tag,
     final void Function() notify,
   ) async {
+    _launchJsonTrackingId = null;
+    _setRowState(repo, tag, const RowState(kind: RowStateKind.pending), notify);
     _setStatus('Launching $repo...', notify);
     try {
       final resp = await _api.postLaunch(repo);
@@ -152,7 +163,23 @@ class LauncherController {
 
       final launchId = resp.launchId;
       final resolvedTag = resp.tag ?? tag;
-      if (launchId.isEmpty) return;
+      if (launchId.isEmpty) {
+        _setRowState(
+          repo,
+          tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
+        return;
+      }
+      if (resolvedTag != tag) {
+        _setRowState(
+          repo,
+          tag,
+          const RowState(kind: RowStateKind.idle),
+          notify,
+        );
+      }
 
       _launchJsonTrackingId = launchId;
 
@@ -166,6 +193,12 @@ class LauncherController {
       _startPolling(launchId, repo, resolvedTag, notify);
     } on Exception catch (e) {
       _setLaunchJson({'error': e.toString()}, notify);
+      _setRowState(
+        repo,
+        tag,
+        const RowState(kind: RowStateKind.failed),
+        notify,
+      );
       _setStatus('Launch failed', notify);
     }
   }
@@ -223,13 +256,6 @@ class LauncherController {
     final Map<String, String> currentTags,
     final void Function() notify,
   ) async {
-    await _restoreJobs(currentTags, notify);
-  }
-
-  Future<void> _restoreJobs(
-    final Map<String, String> currentTags,
-    final void Function() notify,
-  ) async {
     final saved = await _jobs.loadJobs();
 
     for (final job in saved) {
@@ -263,7 +289,17 @@ class LauncherController {
       final url = st.access.url;
       final accessStatus = st.access.status;
 
-      if (url != null && accessStatus == 'Ready') {
+      if (st.isFailed) {
+        _stopPolling(job.launchId);
+        await _jobs.removeJob(job.launchId);
+        _setRowState(
+          job.repo,
+          job.tag,
+          const RowState(kind: RowStateKind.failed),
+          notify,
+        );
+        _setLaunchFailure(job.repo, st.failureMessage, notify);
+      } else if (url != null && accessStatus == 'Ready') {
         _setRowState(
           job.repo,
           job.tag,
@@ -275,7 +311,7 @@ class LauncherController {
           notify,
         );
         _startPolling(job.launchId, job.repo, job.tag, notify);
-      } else if (st.status == 'Succeeded' || st.status == 'Failed') {
+      } else if (st.status == 'Succeeded') {
         await _jobs.removeJob(job.launchId);
         _setRowState(
           job.repo,

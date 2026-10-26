@@ -1,10 +1,10 @@
 import 'package:ap_python_launcher_app/api_service.dart' as api;
 import 'package:ap_python_launcher_app/launcher/models.dart' as models;
 import 'package:ap_python_launcher_app/launcher/widgets.dart'
-    show AppsTable, StatusText;
+    show AppsTable, LaunchStatusPanel, StatusText;
 import 'package:flutter/material.dart';
 import 'package:flutter_controls_core/flutter_controls_core.dart'
-    show BisonThemeData;
+    show BisonButton, BisonThemeData;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -35,7 +35,63 @@ void main() {
     });
   });
 
+  group('LaunchStatusPanel', () {
+    testWidgets('displays failure JSON as selectable text', (
+      final tester,
+    ) async {
+      const json = '{"error":"Storage collision. Launch again."}';
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: BisonThemeData.dark(),
+          home: const Scaffold(body: LaunchStatusPanel(text: json)),
+        ),
+      );
+
+      expect(find.text(json), findsOneWidget);
+      expect(find.byType(SelectableText), findsOneWidget);
+    });
+  });
+
   group('AppsTable', () {
+    testWidgets('failed row shows Failed and allows launching again', (
+      final tester,
+    ) async {
+      var launches = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: BisonThemeData.dark(),
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              child: AppsTable(
+                apps: [
+                  api.AppInfo(
+                    repo: 'ap-python/foo',
+                    tag: 'latest',
+                    allTags: const [],
+                  ),
+                ],
+                rowStateFor: (final repo, final tag) => const models.RowState(
+                  kind: models.RowStateKind.failed,
+                ),
+                onLaunch: (final repo, final tag) async {
+                  launches++;
+                },
+                onEnd: (final id, final repo, final tag) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Status: Failed'), findsOneWidget);
+      expect(find.text('Launch'), findsOneWidget);
+      expect(find.text('Connect'), findsNothing);
+      expect(find.text('End'), findsNothing);
+      expect(find.text('Retry'), findsNothing);
+      await tester.tap(find.text('Launch'));
+      expect(launches, 1);
+    });
+
     testWidgets('renders one row per app (wide layout)', (final tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -119,6 +175,7 @@ void main() {
     });
 
     testWidgets('shows End disabled when ending', (final tester) async {
+      var ends = 0;
       models.RowState stateFor(final String repo, final String tag) {
         return const models.RowState(
           kind: models.RowStateKind.ending,
@@ -143,15 +200,20 @@ void main() {
                 ],
                 rowStateFor: stateFor,
                 onLaunch: (final repo, final tag) async {},
-                onEnd: (final launchId, final repo, final tag) async {},
+                onEnd: (final launchId, final repo, final tag) async {
+                  ends++;
+                },
               ),
             ),
           ),
         ),
       );
 
-      final endButton = tester.widget<Widget>(find.text('End'));
-      expect(endButton, isNotNull);
+      final endButton = tester.widget<BisonButton>(find.byType(BisonButton));
+      expect(endButton.onPressed, isNull);
+      await tester.tap(find.text('End'), warnIfMissed: false);
+      await tester.pump();
+      expect(ends, 0);
     });
 
     testWidgets('renders narrow layout as cards', (final tester) async {
