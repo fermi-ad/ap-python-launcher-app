@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    uses: fermi-ad/.github/.github/workflows/flutter-integration.yaml@add7aae28c8a3f714dbd11341776cede88a3f33e
+    uses: fermi-ad/.github/.github/workflows/flutter-integration.yaml@v1
     secrets: inherit
     permissions:
       contents: write
